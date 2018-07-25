@@ -11,12 +11,16 @@
 (defn javatime-year
   "Return year on a java-time object"
   [javatime]
-  (jt/as javatime :year))
+  (if (nil? javatime)
+    nil
+    (jt/as javatime :year)))
 
 (defn javatime-day-of-year
   "Return day-of-year on a java-time object"
   [javatime]
-  (jt/as javatime :day-of-year))
+  (if (nil? javatime)
+    nil
+    (jt/as javatime :day-of-year)))
 
 (defn ordinal-to-javatime
   "Convert an ordinal day on the Gregorian Calendar

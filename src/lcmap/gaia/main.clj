@@ -3,6 +3,7 @@
   (:require [clojure.tools.logging :as log]
             [lcmap.gaia.config     :as config]
             [lcmap.gaia.file       :as file]
+            [lcmap.gaia.products   :as products]
             [lcmap.gaia.util       :as util]))
 
 ;; ccdc results are the number of change segments

@@ -15,11 +15,12 @@
   ;; queryday -> ordinal format
   (let [query-datetime (util/to-javatime queryday)
         query-year     (util/javatime-year query-datetime)
-        break-datetime (util/ordinal-to-javatime 724394)
+        break-day      (get model "bday")
+        break-datetime (util/ordinal-to-javatime break-day)
         break-year     (util/javatime-year break-datetime)
         year-match     (= query-year break-year)
-        change-prob    (= 1 (:change_prob model))
-        day-of-year    (jt/javatime-day-of-year (:breakdate model))]
+        change-prob    (= 1 (get model "chprob"))
+        day-of-year    (util/javatime-day-of-year break-day)]
     (if (= true year-match change-prob)
       day-of-year
       0)))
