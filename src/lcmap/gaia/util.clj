@@ -2,24 +2,35 @@
   (:require [java-time :as jt]))
 
 (def gregorian_day_one (jt/local-date 0001 1))
+(def date_pattern (re-pattern #"[0-9]{4}-[0-9]{2}-[0-9]{2}"))
+(def date_time_pattern (re-pattern #"[0-9]{4}-[0-9]{2}-[0-9]{2}T[0-9]{2}:[0-9]{2}:[0-9]{2}\.[0-9]{6}"))
 
-(defn to-javatime
-  "Convert a date string to java-time"
+(defmulti to-javatime
+  (fn [datestring]
+    (cond (re-matches date_pattern datestring) :year-month-day
+          (re-matches date_time_pattern datestring) :iso8601)))
+
+(defmethod to-javatime :default
+  [datestring] nil)
+
+(defmethod to-javatime :year-month-day
   [datestring]
-  (jt/local-date "MM-yyyy-dd" datestring))
+  (jt/local-date datestring))
+
+(defmethod to-javatime :iso8601
+  [datestring]
+  (jt/local-date-time datestring))
 
 (defn javatime-year
   "Return year on a java-time object"
   [javatime]
-  (if (nil? javatime)
-    nil
+  (when (not (nil? javatime))
     (jt/as javatime :year)))
 
 (defn javatime-day-of-year
   "Return day-of-year on a java-time object"
   [javatime]
-  (if (nil? javatime)
-    nil
+  (when (not (nil? javatime))
     (jt/as javatime :day-of-year)))
 
 (defn ordinal-to-javatime
@@ -33,3 +44,4 @@
   "Convert java-time to ordinal value"
   [javatime]
   (jt/time-between gregorian_day_one javatime :days))
+
