@@ -17,9 +17,6 @@
         break-day   (get model "bday")
         query-year  (-> query-day (util/to-javatime) (util/javatime-year))
         break-year  (-> break-day (util/ordinal-to-javatime) (util/javatime-year))]
-    ;; (prn "*** " query-year)
-    ;; (prn "*** " break-year)
-    ;; (prn "*** " change-prob)
     (if (= true (= query-year break-year) (= 1.0 change-prob))
-      (util/javatime-day-of-year break-day)
+      (-> break-day (util/ordinal-to-javatime) (util/javatime-day-of-year)) 
       0)))

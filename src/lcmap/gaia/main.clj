@@ -4,7 +4,11 @@
             [lcmap.gaia.config     :as config]
             [lcmap.gaia.file       :as file]
             [lcmap.gaia.products   :as products]
-            [lcmap.gaia.util       :as util]))
+            [lcmap.gaia.util       :as util]
+            [mount.core            :as mount]
+            [lcmap.gaia.gdal       :as gdal]))
+
+
 
 ;; ccdc results are the number of change segments
 ;; detected over a 100x100 pixel area (chip)
@@ -23,21 +27,6 @@
   (log/infof "%s is not a valid product" product)
   nil)
 
-(defmethod gen-product :primary-landcover
-  [infile product queryday])
-
-(defmethod gen-product :secondary-landcover
-  [infile product queryday]
-  nil)
-
-(defmethod gen-product :primary-confidence
-  [infile product queryday]
-  nil)
-
-(defmethod gen-product :secondary-confidence
-  [infile product queryday]
-  nil)
-
 (defmethod gen-product :time-of-change
   [infile product queryday]
   (let [input (file/read-json infile)
@@ -49,9 +38,9 @@
    (println "Welcome to lcmap-gaia\nHere are your options:")
    (System/exit 0))
   ([infile product queryday]
-  (log/infof "output for %s %s %s" infile product)
-  (System/exit 0)))
+   ;; Only mount states defined in required namespaces are started.
+   (mount/start)
+   
+   (log/infof "output for %s %s %s" infile product)
+   (System/exit 0)))
 
-(defn foo
-  [i]
-  (* i 2))

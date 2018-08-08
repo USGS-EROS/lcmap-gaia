@@ -8,12 +8,11 @@
                  [environ                   "1.1.0"]
                  [org.clojure/clojure       "1.9.0"]
                  [org.clojure/core.async    "0.3.443"]
-                 [org.clojure/tools.logging "0.4.0"]]
+                 [org.clojure/tools.logging "0.4.0"]
+                 [org.gdal/gdal             "2.2.0"]
+                 [mount                     "0.1.12"]]
   :plugins [[lein-environ "1.1.0"]]
-  :profiles {:dev     {:resource-paths ["dev"]}
-             :repl    {:resource-paths ["dev"]
-		       :dependencies [[cider/cider-nrepl "0.15.1"]]}
-             :test    {:resource-paths ["test" "test/resources"]}
+  :profiles {:test    {:resource-paths ["test" "test/resources"]}
              :uberjar {:omit-source true
                        :aot :all}}
   :main lcmap.gaia.main)
