@@ -45,12 +45,13 @@
   [javatime]
   (jt/time-between gregorian_day_one javatime :days))
 
-(defn filter-dups
-  [coll]
-  (let [gb (group-by #(select-keys % ["pixelx" "pixely"]) coll)]
+(defn coll-groups
+  [coll keys]
+  (group-by #(select-keys % keys) coll))
 
-    )
-)
+(defn pixel-groups
+  [coll]
+  (coll-groups coll ["pixelx" "pixely"]))
 
 
 ;; add-usr-path and amend-usr-path blatantly ripped off from the

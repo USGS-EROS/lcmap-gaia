@@ -3,5 +3,4 @@
             [lcmap.gaia.main :as gm]))
 
 
-(deftest is-quad?
-  (is (= 4 (gm/foo 2))))
+

@@ -30,8 +30,11 @@
 (defmethod gen-product :time-of-change
   [infile product queryday]
   (let [input (file/read-json infile)
-        output (map products/time-of-change input)]
-      (first output)))
+        pixel_segments (util/pixel-groups input)
+        pixel_array (map #(products/time-of-change (first %) (last %) queryday) pixel_segments)
+        output_name (products/product-name (first input) product "gtif")]
+    ;(gdal/geotiff pixel_array output_name)
+    output_name))
 
 (defn -main
   ([]

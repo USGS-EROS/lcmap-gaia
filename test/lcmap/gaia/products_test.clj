@@ -1,14 +1,21 @@
 (ns lcmap.gaia.products-test
   (:require [clojure.test :refer :all]
             [lcmap.gaia.products :as products]
+            [lcmap.gaia.file     :as file]
             [lcmap.gaia.util     :as util]))
 
-(deftest time-of-change-positive-test
-  (let [queryday "1990-04-01"
-        breakord (-> "1990-03-01" (util/to-javatime) (util/javatime-to-ordinal))
-        model {"bday" breakord "chprob" 1.0}]
-    (is (= 111 (products/time-of-change model queryday)))
-    )
-)
+(def chipdata (file/read-json "resources/y3161805_x-2115585.json"))
+(def pixel_segments (util/pixel-groups chipdata))
+(def querydate "2006-07-01")
 
-;; (deftest time-of-change-negative-test)
+(deftest time-of-change-single-model-test
+  (let [first_pixel    (first pixel_segments)
+        pixel_models   (last first_pixel)
+        result (products/time-of-change (first pixel_models) querydate 100 -100)]
+    (is (= (set (keys result))  (set [:pixelx :pixely :toc])))))
+
+(deftest time-of-change-chip-level-test
+  (let [results (map #(products/time-of-change (first %) (last %) querydate) pixel_segments)
+        first_result (first results)]
+    (is (= (count results) 10000))
+    (is (= (set (keys first_result)) (set [:pixelx :pixely :toc])))))
