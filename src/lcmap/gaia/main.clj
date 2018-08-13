@@ -34,6 +34,7 @@
         pixel_array (map #(products/time-of-change (first %) (last %) queryday) pixel_segments)
         output_name (products/product-name (first input) product "gtif")]
     ;(gdal/geotiff pixel_array output_name)
+    (prn output_name)
     output_name))
 
 (defn -main
@@ -43,7 +44,6 @@
   ([infile product queryday]
    ;; Only mount states defined in required namespaces are started.
    (mount/start)
-   
-   (log/infof "output for %s %s %s" infile product)
+   (gen-product infile product queryday)
    (System/exit 0)))
 

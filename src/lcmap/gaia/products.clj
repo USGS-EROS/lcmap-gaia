@@ -1,6 +1,7 @@
 (ns lcmap.gaia.products
   (:require [clojure.tools.logging :as log]
             [clojure.string        :as string]
+            [clojure.math.numeric-tower :as math]
             [lcmap.gaia.util       :as util]))
 
 (defn product-name
@@ -11,26 +12,45 @@
     (str name "." fmt)))
 
 (defn time-of-change
+  "Return numeric day of year in which a break occurs"
   ([model query-day x y]
-  ;; Output the numeric day of year, in the year which a break occurs in.
-  ;; Pseudo Code
-  ;; queryday = date(“july”, 1, 1990).toordinal()
-  ;; if queryday.year == ccdmodel.breakdate.year and ccdmodel.change_prob == 1:
-  ;; 	return dayofyear(ccdmodel.breakdate)
-  ;; else:
-  ;; 	return 0
-
-  ;; queryday -> ordinal format
-  (let [change-prob (get model "chprob")
-        break-day   (get model "bday")
-        query-year  (-> query-day (util/to-javatime) (util/javatime-year))
-        break-year  (-> break-day (util/ordinal-to-javatime) (util/javatime-year))
-        response    #(hash-map :pixelx x :pixely y :toc %)]
-    (if (= true (= query-year break-year) (= 1.0 change-prob))
-      (-> break-day (util/ordinal-to-javatime) (util/javatime-day-of-year) response) 
-      (-> 0 response))))
+   (let [change-prob (get model "chprob")
+         break-day   (get model "bday")
+         query-year  (-> query-day (util/to-javatime) (util/javatime-year))
+         break-year  (-> break-day (util/ordinal-to-javatime) (util/javatime-year))
+         response    #(hash-map :pixelx x :pixely y :val %)]
+     (if (= true (= query-year break-year) (= 1.0 change-prob))
+       (-> break-day (util/ordinal-to-javatime) (util/javatime-day-of-year) response) 
+       (-> 0 response))))
   ([pixel_map pixel_models query-day]
    (let [values (map #(time-of-change % query-day (:pixelx pixel_map) (:pixely pixel_map)) pixel_models)]
-     (last (sort-by :toc values)))))
+     (last (sort-by :val values)))))
 
+(defn time-since-change
+  "Return cumulative distance to previous break"
+  ([model query-day x y]
+   (let [change-prob (get model "chprob")
+         break-day   (get model "bday")
+         query-ord   (-> query-day (util/to-javatime) (util/javatime-to-ordinal))
+         distance    (if (= 1.0 change-prob) (- query-ord break-day) nil)]
+     (hash-map :pixelx x :pixely y :val distance)))
+  ([pixel_map pixel_models query-day]
+   (let [values (map #(time-since-change % query-day (:pixelx pixel_map) (:pixely pixel_map)) pixel_models)]
+     (first (filter (fn [i] (some? (:val i))) (sort-by :val values))))))
 
+(defn magnitude-of-change
+  "Return severity of spectral shift"
+  ([model query-day x y]
+   (let [change-prob (get model "chprob")
+         break-day   (get model "bday")
+         query-year  (-> query-day (util/to-javatime) (util/javatime-year))
+         break-year  (-> break-day (util/ordinal-to-javatime) (util/javatime-year))
+         magnitudes  [(get model "grmag") (get model "remag") (get model "nimag") (get model "s1mag") (get model "s2mag")]
+         euc-norm    (math/sqrt (reduce + (map #(math/expt % 2) magnitudes)))
+         response    #(hash-map :pixelx x :pixely y :val %)]
+     (if (= true (= query-year break-year) (= 1.0 change-prob))
+       (-> euc-norm (response))
+       (-> 0 (response)))))
+  ([pixel_map pixel_models query-day]
+   (let [values (map #(magnitude-of-change % query-day (:pixelx pixel_map) (:pixely pixel_map)) pixel_models)]
+     (last (sort-by :val values)))))
