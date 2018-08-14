@@ -37,6 +37,6 @@
 
 (deftest magnitude-of-change-chip-level-test
   (let [results (map #(products/magnitude-of-change (first %) (last %) querydate) pixel_segments)
-        non_nils (filter (fn [i] (some? (:val i))) results)]
-    (is (= (count non_nils) 763))
+        gt_zero (filter (fn [i] (> (:val i) 0)) results)]
+    (is (= (count gt_zero) 54))
     (is (= (count results) 10000))))
