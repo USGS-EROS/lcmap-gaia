@@ -54,3 +54,15 @@
   ([pixel_map pixel_models query-day]
    (let [values (map #(magnitude-of-change % query-day (:pixelx pixel_map) (:pixely pixel_map)) pixel_models)]
      (last (sort-by :val values)))))
+
+(defn length-of-segment
+  "Return length of change segment in days"
+  ([model query-day x y]
+   (let [query-ord (-> query-day (util/to-javatime) (util/javatime-to-ordinal))
+         startends [(- query-ord (get model "sday")) (- query-ord (get model "eday"))]
+         positives (filter (fn [i] (> i 0)) startends)
+         response  #(hash-map :pixelx x :pixely y :val %)]
+     (-> (apply min positives) response)))
+  ([pixel_map pixel_models query-day]
+   (let [values (map #(magnitude-of-change % query-day (:pixelx pixel_map) (:pixely pixel_map)) pixel_models)]
+     (first (sort-by :val values)))))

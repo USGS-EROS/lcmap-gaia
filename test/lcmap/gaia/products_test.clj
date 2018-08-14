@@ -40,3 +40,13 @@
         gt_zero (filter (fn [i] (> (:val i) 0)) results)]
     (is (= (count gt_zero) 54))
     (is (= (count results) 10000))))
+
+(deftest length-of-segment-single-model-test
+  (let [result (products/length-of-segment (first pixel_models) querydate 100 -100)]
+    (is (= (set (keys result)) response_set))))
+
+(deftest length-of-segment-chip-level-test
+  (let [results (map #(products/length-of-segment (first %) (last %) querydate) pixel_segments)
+        gt_zero (filter (fn [i] (> (:val i) 0)) results)]
+    (is (= (count gt_zero) 54))
+    (is (= (count results) 10000))))

@@ -3,7 +3,7 @@
   (:require [clojure.tools.logging :as log]
             [lcmap.gaia.config     :as config]
             [lcmap.gaia.file       :as file]
-            [lcmap.gaia.products   :refer :all]
+            [lcmap.gaia.products   :as products]
             [lcmap.gaia.util       :as util]
             [mount.core            :as mount]
             [lcmap.gaia.gdal       :as gdal]))
@@ -16,10 +16,10 @@
 ;; if no changes are detected, a result is 
 ;; returned with an sday and eday == 0
 
-(defn gen-product
+(defn generate-product
   [infile product queryday]
   (let [input (file/read-json infile)
-        product_fn (resolve (symbol product))
+        product_fn (resolve (symbol (str "products/" product)))
         pixel_segments (util/pixel-groups input)
         pixel_array (map #(product_fn (first %) (last %) queryday) pixel_segments)
         output_name (products/product-name (first input) product "gtif")]
@@ -34,6 +34,6 @@
   ([infile product queryday]
    ;; Only mount states defined in required namespaces are started.
    (mount/start)
-   (gen-product infile product queryday)
+   (generate-product infile product queryday)
    (System/exit 0)))
 
