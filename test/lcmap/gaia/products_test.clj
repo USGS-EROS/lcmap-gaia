@@ -48,5 +48,5 @@
 (deftest length-of-segment-chip-level-test
   (let [results (map #(products/length-of-segment (first %) (last %) querydate) pixel_segments)
         gt_zero (filter (fn [i] (> (:val i) 0)) results)]
-    (is (= (count gt_zero) 54))
+    (is (= (count gt_zero) 9942))
     (is (= (count results) 10000))))

@@ -23,7 +23,7 @@
        (-> break-day (util/ordinal-to-javatime) (util/javatime-day-of-year) response) 
        (-> 0 response))))
   ([pixel_map pixel_models query-day]
-   (let [values (map #(time-of-change % query-day (:pixelx pixel_map) (:pixely pixel_map)) pixel_models)]
+   (let [values (map #(time-of-change % query-day (get pixel_map "pixelx") (get pixel_map "pixely")) pixel_models)]
      (last (sort-by :val values)))))
 
 (defn time-since-change
@@ -35,7 +35,7 @@
          distance    (if (= 1.0 change-prob) (- query-ord break-day) nil)]
      (hash-map :pixelx x :pixely y :val distance)))
   ([pixel_map pixel_models query-day]
-   (let [values (map #(time-since-change % query-day (:pixelx pixel_map) (:pixely pixel_map)) pixel_models)]
+   (let [values (map #(time-since-change % query-day (get pixel_map "pixelx") (get pixel_map "pixely")) pixel_models)]
      (first (filter (fn [i] (some? (:val i))) (sort-by :val values))))))
 
 (defn magnitude-of-change
@@ -52,7 +52,7 @@
        (-> euc-norm (response))
        (-> 0 (response)))))
   ([pixel_map pixel_models query-day]
-   (let [values (map #(magnitude-of-change % query-day (:pixelx pixel_map) (:pixely pixel_map)) pixel_models)]
+   (let [values (map #(magnitude-of-change % query-day (get pixel_map "pixelx") (get pixel_map "pixely")) pixel_models)]
      (last (sort-by :val values)))))
 
 (defn length-of-segment
@@ -61,8 +61,8 @@
    (let [query-ord (-> query-day (util/to-javatime) (util/javatime-to-ordinal))
          startends [(- query-ord (get model "sday")) (- query-ord (get model "eday"))]
          positives (filter (fn [i] (> i 0)) startends)
-         response  #(hash-map :pixelx x :pixely y :val %)]
-     (-> (apply min positives) response)))
+         minimum   (if (= 0 (count positives)) 0 (apply min positives))]
+     (hash-map :pixelx x :pixely y :val minimum)))
   ([pixel_map pixel_models query-day]
-   (let [values (map #(magnitude-of-change % query-day (:pixelx pixel_map) (:pixely pixel_map)) pixel_models)]
+   (let [values (map #(length-of-segment % query-day (get pixel_map "pixelx") (get pixel_map "pixely")) pixel_models)]
      (first (sort-by :val values)))))
