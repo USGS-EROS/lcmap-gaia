@@ -2,6 +2,8 @@
   (:require [mount.core :as mount]
             [lcmap.gaia.util :as util])
   (:import [org.gdal.gdal gdal]
+           [org.gdal.gdal Driver]
+           [org.gdal.gdal Dataset]
            [org.gdal.gdalconst gdalconst]))
 
 ;; init and state constructs blatantly ripped off from the
@@ -46,7 +48,22 @@
 (mount/defstate gdal-init
   :start (init))
 
+(defn geotiff_from_pixel_array
+  [pixel_array output_name]
+  (let [tif_driver  (gdal/GetDriverByName "GTiff")
+        tif_dataset (.Create tif_driver output_name 100 100)
+        tif_band    (.GetRasterBand tif_datast 1)
+        ]
+    ; SetGeoTransform on dataset
+    ; SetProjection on dataset (wkt)
+    ; GetRasterBand
+    ; .WriteRaster band xoff yoff xsize ysize array
 
+   )
+
+
+
+)
 
 
 ;; import org.gdal.gdal Driver
@@ -55,5 +72,14 @@
 ;; create a dataset with Driver/Create
 ;; add a layer with Dataset/CreateLayer
 
+;; import 'org.gdal.gdal gdal
+;; (def tiff_driver (gdal/GetDriverByName "GTiff"))
+;; (def tiff_dataset (.Create tiff_driver "foo.tif" 100 100))
 
+
+
+
+;; unverified
+;; (def band (.GetRasterBand tiff_dataset 1))
+;; (.WriteRaster band x x x x x)
 

@@ -23,7 +23,7 @@
         pixel_segments (util/pixel-groups input)
         pixel_array (map #(product_fn (first %) (last %) queryday) pixel_segments)
         output_name (products/product-name (first input) product "gtif")]
-    ;(gdal/geotiff pixel_array output_name)
+    ;(gdal/geotiff_from_pixel_array pixel_array output_name)
     (prn output_name)
     output_name))
 
