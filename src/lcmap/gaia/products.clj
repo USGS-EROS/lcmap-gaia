@@ -66,3 +66,17 @@
   ([pixel_map pixel_models query-day]
    (let [values (map #(length-of-segment % query-day (get pixel_map "pixelx") (get pixel_map "pixely")) pixel_models)]
      (first (sort-by :val values)))))
+
+(defn curve-fit
+  "Return Curve QA for point in time"
+  ([model query-day x y]
+   (let [query-ord (-> query-day (util/to-javatime) (util/javatime-to-ordinal))
+         curve-qa  (get model "curqa")
+         start-day (get model "sday")
+         end-day   (get model "eday")
+         value     (if (<= start-day query-ord end-day) curve-qa 0)]
+     (hash-map :pixelx x :pixely y :val value)))
+  ([pixel_map pixel_models query-day]
+   (let [values (map #(curve-fit % query-day (get pixel_map "pixelx") (get pixel_map "pixely")) pixel_models)]
+     (last (sort-by :val values)))))
+

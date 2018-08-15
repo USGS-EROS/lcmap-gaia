@@ -50,3 +50,13 @@
         gt_zero (filter (fn [i] (> (:val i) 0)) results)]
     (is (= (count gt_zero) 9942))
     (is (= (count results) 10000))))
+
+(deftest curve-fit-single-model-test
+  (let [result (products/curve-fit (first pixel_models) querydate 100 -100)]
+    (is (= (set (keys result)) response_set))))
+
+(deftest curve-fit-chip-level-test
+  (let [results (map #(products/curve-fit (first %) (last %) querydate) pixel_segments)
+        gt_zero (filter (fn [i] (> (:val i) 0)) results)]
+    (is (= (count gt_zero) 9977))
+    (is (= (count results) 10000))))
