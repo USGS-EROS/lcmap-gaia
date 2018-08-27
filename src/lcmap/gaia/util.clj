@@ -1,5 +1,8 @@
 (ns lcmap.gaia.util
-  (:require [java-time :as jt]))
+  (:require [java-time :as jt]
+            [cheshire.core :as json]
+            [org.httpkit.client :as http]
+            [lcmap.gaia.config :refer [config]]))
 
 (def gregorian_day_one (jt/local-date 0001 1))
 (def date_pattern (re-pattern #"[0-9]{4}-[0-9]{2}-[0-9]{2}"))
@@ -74,3 +77,10 @@
   ""
   [more-paths]
   (apply add-usr-path more-paths))
+
+(defn get-projection
+  []
+  (let [grid_resource (str (:chipmunk_host config) "/grid")
+        grid_response (http/get grid_resource)
+        json_body (first (json/parse-string (:body @grid_response)))]
+    (get json_body "proj")))

@@ -12,7 +12,8 @@
                  [org.gdal/gdal             "2.2.0"]
                  [mount                     "0.1.12"]
                  [org.clojure/math.numeric-tower "0.0.4"]
-                 [com.cemerick/pomegranate  "1.0.0"]]
+                 [com.cemerick/pomegranate  "1.0.0"]
+                 [http-kit                  "2.2.0"]]
   :plugins [[lein-environ "1.1.0"]]
   :profiles {:test    {:resource-paths ["test" "test/resources"]}
              :uberjar {:omit-source true
