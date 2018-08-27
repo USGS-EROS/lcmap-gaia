@@ -52,8 +52,11 @@
   [pixel_array output_name]
   (let [tif_driver  (gdal/GetDriverByName "GTiff")
         tif_dataset (.Create tif_driver output_name 100 100)
-        tif_band    (.GetRasterBand tif_datast 1)
+        ;tif_band    (.GetRasterBand tif_datast 1)
         ]
+    (.SetGeoTransform tif_dataset ) ;(XULCorner,Cellsize,0,YULCorner,0,-Cellsize)
+                                    ; chipx, 30, 0, chipy, 0, -30
+
     ; SetGeoTransform on dataset
     ; SetProjection on dataset (wkt)
     ; GetRasterBand
