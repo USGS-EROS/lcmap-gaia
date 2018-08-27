@@ -8,6 +8,14 @@
             [mount.core            :as mount]
             [lcmap.gaia.gdal       :as gdal]))
 
+(defn sort-pixels
+  [pixel_coll]
+  (let [row-groups (util/coll-groups pixel_coll [:pixely])
+        sort-pixelx-fn (fn [i] (hash-map (:pixely (first i)) (sort-by :pixelx (last i))))
+        sorted-x-vals (map sort-pixelx-fn row-groups)]
+    (sort-by (fn [i] (first (keys i))) sorted-x-vals)))
+
+
 ;; ccdc results are the number of change segments
 ;; detected over a 100x100 pixel area (chip)
 ;; There can be multiple changes over time 
@@ -22,12 +30,13 @@
         product_fn (resolve (symbol (str "products/" product)))
         pixel_segments (util/pixel-groups input)
         pixel_array (map #(product_fn (first %) (last %) queryday) pixel_segments)
+        pixel_sorted (sort-pixels pixel_array)
         output_name (products/product-name (first input) product "gtif")
         first_model (first (last pixel_segments))
         chipx (get first_model "chipx")
         chipy (get first_model "chipy")
         proj_wkt (util/get-projection)]
-    ;(gdal/geotiff_from_pixel_array pixel_array output_name chipx chipy proj_wkt)
+    (gdal/geotiff_from_pixel_array pixel_array output_name chipx chipy proj_wkt)
     (prn output_name)
     output_name))
 

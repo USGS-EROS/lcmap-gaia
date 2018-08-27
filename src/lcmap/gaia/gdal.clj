@@ -53,35 +53,9 @@
   (let [tif_driver  (gdal/GetDriverByName "GTiff")
         tif_dataset (.Create tif_driver output_name 100 100)
         tif_band    (.GetRasterBand tif_dataset 1)
-        transform_array (double-array [ulx 30 0 uly 0 30])]
-    (.SetGeoTransform tif_dataset transform_array) ;(XULCorner,Cellsize,0,YULCorner,0,-Cellsize)
-                                                      ; chipx, 30, 0, chipy, 0, -30
+        transform_array (double-array [ulx 30 0 uly 0 30])] ;(XULCorner,Cellsize,0,YULCorner,0,-Cellsize)
+    (.SetGeoTransform tif_dataset transform_array) 
     (.SetProjection tif_dataset proj_wkt)
-    (.WriteRaster tif_band 0 0 100 100 (float-array pixel_array)) ;offsetx offsety requestx
-    ; GetRasterBand
-    ; .WriteRaster band xoff yoff xsize ysize array
-
-   )
-
-
-
-)
-
-
-;; import org.gdal.gdal Driver
-;; import org.gdal.gdal Dataset
-
-;; create a dataset with Driver/Create
-;; add a layer with Dataset/CreateLayer
-
-;; import 'org.gdal.gdal gdal
-;; (def tiff_driver (gdal/GetDriverByName "GTiff"))
-;; (def tiff_dataset (.Create tiff_driver "foo.tif" 100 100))
-
-
-
-
-;; unverified
-;; (def band (.GetRasterBand tiff_dataset 1))
-;; (.WriteRaster band x x x x x)
-
+    (.WriteRaster tif_band 0 0 100 100 (float-array pixel_array)) 
+    ; write to disk
+    (.delete tif_band)))
