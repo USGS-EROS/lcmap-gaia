@@ -49,16 +49,15 @@
   :start (init))
 
 (defn geotiff_from_pixel_array
-  [pixel_array output_name]
+  [pixel_array output_name ulx uly proj_wkt]
   (let [tif_driver  (gdal/GetDriverByName "GTiff")
         tif_dataset (.Create tif_driver output_name 100 100)
-        ;tif_band    (.GetRasterBand tif_datast 1)
-        ]
-    (.SetGeoTransform tif_dataset ) ;(XULCorner,Cellsize,0,YULCorner,0,-Cellsize)
-                                    ; chipx, 30, 0, chipy, 0, -30
-
-    ; SetGeoTransform on dataset
-    ; SetProjection on dataset (wkt)
+        tif_band    (.GetRasterBand tif_dataset 1)
+        transform_array (double-array [ulx 30 0 uly 0 30])]
+    (.SetGeoTransform tif_dataset transform_array) ;(XULCorner,Cellsize,0,YULCorner,0,-Cellsize)
+                                                      ; chipx, 30, 0, chipy, 0, -30
+    (.SetProjection tif_dataset proj_wkt)
+    (.WriteRaster tif_band 0 0 100 100 (float-array pixel_array)) ;offsetx offsety requestx
     ; GetRasterBand
     ; .WriteRaster band xoff yoff xsize ysize array
 

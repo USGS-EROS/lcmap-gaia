@@ -1,7 +1,7 @@
 (ns lcmap.gaia.main
   (:gen-class)
   (:require [clojure.tools.logging :as log]
-            [lcmap.gaia.config     :as config]
+            [lcmap.gaia.config     :refer [config]]
             [lcmap.gaia.file       :as file]
             [lcmap.gaia.products   :as products]
             [lcmap.gaia.util       :as util]
@@ -22,8 +22,12 @@
         product_fn (resolve (symbol (str "products/" product)))
         pixel_segments (util/pixel-groups input)
         pixel_array (map #(product_fn (first %) (last %) queryday) pixel_segments)
-        output_name (products/product-name (first input) product "gtif")]
-    ;(gdal/geotiff_from_pixel_array pixel_array output_name)
+        output_name (products/product-name (first input) product "gtif")
+        first_model (first (last pixel_segments))
+        chipx (get first_model "chipx")
+        chipy (get first_model "chipy")
+        proj_wkt (util/get-projection)]
+    ;(gdal/geotiff_from_pixel_array pixel_array output_name chipx chipy proj_wkt)
     (prn output_name)
     output_name))
 
