@@ -49,6 +49,7 @@
   (jt/time-between gregorian_day_one javatime :days))
 
 (defn coll-groups
+  "Group collection of hash maps by shared keys values"
   [coll keys]
   (group-by #(select-keys % keys) coll))
 
