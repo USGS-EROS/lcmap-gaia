@@ -80,3 +80,26 @@
    (let [values (map #(curve-fit % query-day (get pixel_map "pixelx") (get pixel_map "pixely")) pixel_models)]
      (last (sort-by :val values)))))
 
+(defn data
+  "Returns a flat list of product values from JSON of a chips worth of CCDC results"
+  [injson product_fn queryday]
+  (prn (count injson))
+  (prn product_fn)
+  (prn queryday)
+  (let [; group segments by pixel coordinates
+        pixel_segments (util/coll-groups injson ["pixelx" "pixely"])
+        ; map the products function across the pixel segments. Returns a flat
+        ; collection, one hash map per pixel coordinate pair.
+        pixel_array (map #(product_fn (first %) (last %) queryday) pixel_segments)
+        ; group product coll by row 
+        ; [{:pixely 3159045} [{:pixely 3159045, :pixelx -2114775, :val 6290},...] ...]
+        row_groups (util/coll-groups pixel_array [:pixely]) 
+        ; sort row group values by pixelx descending 
+        sort-pixelx-fn (fn [i] (hash-map (:pixely (first i)) (sort-by :pixelx (last i))))
+        sorted-x-vals (map sort-pixelx-fn row_groups)
+        ; sort the rows by the pixely key ascending
+        sorted-y-rows (sort-by (fn [i] (first (keys i))) sorted-x-vals)]
+    ; finally, flatten to a one dimensional list
+    (util/flatten-vals sorted-y-rows :val)))
+
+

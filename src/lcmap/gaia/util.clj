@@ -57,6 +57,12 @@
   [coll]
   (coll-groups coll ["pixelx" "pixely"]))
 
+(defn flatten-vals
+  "Flatten the values for a collection of hash-maps"
+  [coll mapkey]
+  (let [coll_vals (map (fn [i] (vals i)) coll)
+        vals_flat (flatten coll_vals)]
+    (map mapkey vals_flat)))
 
 ;; add-usr-path and amend-usr-path blatantly ripped off from the
 ;; USGS-EROS/lcmap-chipmunk project on GitHub, created by
