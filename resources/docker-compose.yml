@@ -1,0 +1,19 @@
+version: "3"
+
+services:
+
+  cassandra:
+    image: cassandra:3.9
+    network_mode: "host"
+
+  chipmunk:
+    image: "usgseros/lcmap-chipmunk:develop-1.0.0-SNAPSHOT"
+    network_mode: "host"
+    environment:
+      - DB_HOST=localhost
+      - DB_PORT=9042
+      - DB_KEYSPACE=chipmunk_local
+      - HTTP_PORT=5656
+      - Xms=4352m
+      - Xmx=4352m
+
