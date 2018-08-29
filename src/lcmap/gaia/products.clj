@@ -32,11 +32,11 @@
    (let [change-prob (get model "chprob")
          break-day   (get model "bday")
          query-ord   (-> query-day (util/to-javatime) (util/javatime-to-ordinal))
-         distance    (if (= 1.0 change-prob) (- query-ord break-day) nil)]
+         distance    (if (= 1.0 change-prob) (- query-ord break-day) 0)] ; can't use nil, dont think 0 is appropriate
      (hash-map :pixelx x :pixely y :val distance)))
   ([pixel_map pixel_models query-day]
    (let [values (map #(time-since-change % query-day (get pixel_map "pixelx") (get pixel_map "pixely")) pixel_models)]
-     (first (filter (fn [i] (some? (:val i))) (sort-by :val values))))))
+     (last (filter (fn [i] (some? (:val i))) (sort-by :val values))))))
 
 (defn magnitude-of-change
   "Return severity of spectral shift"
@@ -83,9 +83,6 @@
 (defn data
   "Returns a flat list of product values from JSON of a chips worth of CCDC results"
   [injson product_fn queryday]
-  (prn (count injson))
-  (prn product_fn)
-  (prn queryday)
   (let [; group segments by pixel coordinates
         pixel_segments (util/coll-groups injson ["pixelx" "pixely"])
         ; map the products function across the pixel segments. Returns a flat
@@ -94,7 +91,7 @@
         ; group product coll by row 
         ; [{:pixely 3159045} [{:pixely 3159045, :pixelx -2114775, :val 6290},...] ...]
         row_groups (util/coll-groups pixel_array [:pixely]) 
-        ; sort row group values by pixelx descending 
+        ; sort row group values by pixelx ascending 
         sort-pixelx-fn (fn [i] (hash-map (:pixely (first i)) (sort-by :pixelx (last i))))
         sorted-x-vals (map sort-pixelx-fn row_groups)
         ; sort the rows by the pixely key ascending
