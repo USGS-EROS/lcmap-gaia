@@ -25,8 +25,7 @@
 (defmethod get-product "application/json"
   [product_type request]
   (let [input foo_data
-        product_fn (-> (str "lcmap.gaia.products/" product_type) (symbol) (resolve))
-        product_values (products/data input product_fn query_day)
+        product_values (products/data input product_type query_day)
         chipx (get (first input) "chipx")
         chipy (get (first input) "chipy")]
     {:status 200 :body {"chipx" chipx "chipy" chipy "values" product_values}}))

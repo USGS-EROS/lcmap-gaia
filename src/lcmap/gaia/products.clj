@@ -83,11 +83,12 @@
 
 (defn data
   "Returns a flat list of product values from JSON of a chips worth of CCDC results"
-  [injson product_fn queryday]
+  [injson product_type queryday]
   (let [; group segments by pixel coordinates
         pixel_segments (util/coll-groups injson ["pixelx" "pixely"])
         ; map the products function across the pixel segments. Returns a flat
         ; collection, one hash map per pixel coordinate pair.
+        product_fn (-> (str "lcmap.gaia.products/" product_type) (symbol) (resolve))
         pixel_array (map #(product_fn (first %) (last %) queryday) pixel_segments)
         ; group product coll by row 
         ; [{:pixely 3159045} [{:pixely 3159045, :pixelx -2114775, :val 6290},...] ...]

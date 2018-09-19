@@ -1,6 +1,7 @@
 (ns lcmap.gaia.main
   (:gen-class)
   (:require [clojure.tools.logging :as log]
+            [cheshire.core         :as json]
             [lcmap.gaia.config     :refer [config]]
             [lcmap.gaia.file       :as file]
             [lcmap.gaia.products   :as products]
@@ -17,6 +18,6 @@
   ([]
    (server/run-server))
   ([infile product queryday]
-   (products/data (file/read-json infile) product queryday)
-   (System/exit 0)))
+   (let [product_data (products/data (file/read-json infile) product queryday)]
+     (println (json/generate-string {:x 1 :y 2 :product product_data})))))
 
