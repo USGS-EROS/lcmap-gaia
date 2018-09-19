@@ -1,10 +1,9 @@
 (ns lcmap.gaia.main
   (:gen-class)
   (:require [clojure.tools.logging :as log]
-            [mount.core            :as mount]
             [lcmap.gaia.config     :refer [config]]
+            [lcmap.gaia.file       :as file]
             [lcmap.gaia.products   :as products]
-            [lcmap.gaia.gdal       :as gdal]
             [lcmap.gaia.server     :as server]))
 
 ;; ccdc results are the number of change segments
@@ -16,11 +15,8 @@
 
 (defn -main
   ([]
-   (mount/start)
    (server/run-server))
   ([infile product queryday]
-   ;; Only mount states defined in required namespaces are started.
-   (mount/start)
-   (products/generate-product infile product queryday)
+   (products/data (file/read-json infile) product queryday)
    (System/exit 0)))
 

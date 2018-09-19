@@ -63,31 +63,3 @@
   (let [coll_vals (map (fn [i] (vals i)) coll)
         vals_flat (flatten coll_vals)]
     (map mapkey vals_flat)))
-
-;; add-usr-path and amend-usr-path blatantly ripped off from the
-;; USGS-EROS/lcmap-chipmunk project on GitHub, created by
-;; Jon Morton https://github.com/jmorton
-;; 
-(defn add-usr-path
-  ""
-  [& paths]
-  (let [field (.getDeclaredField ClassLoader "usr_paths")]
-    (try (.setAccessible field true)
-         (let [original (vec (.get field nil))
-               updated  (distinct (concat original paths))]
-           (.set field nil (into-array updated)))
-         (finally
-           (.setAccessible field false)))))
-
-
-(defn amend-usr-path
-  ""
-  [more-paths]
-  (apply add-usr-path more-paths))
-
-(defn get-projection
-  []
-  (let [grid_resource (str (:chipmunk_host config) "/grid")
-        grid_response (http/get grid_resource)
-        json_body (first (json/parse-string (:body @grid_response)))]
-    (get json_body "proj")))

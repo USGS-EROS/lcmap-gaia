@@ -9,7 +9,6 @@
             [org.httpkit.server :as http-server]
             [lcmap.gaia.file :as file]
             [lcmap.gaia.products :as products]
-            [lcmap.gaia.gdal :as gdal]
             [lcmap.gaia.util :as util])
   (:import (java.io FileInputStream)))
 
@@ -21,12 +20,7 @@
 
 (defmethod get-product :default
   [product_type request]
-  {:status 200 :body [(str "please define a valid Accept header of either 'image/tif' or 'application/json'") ]})
-
-(defmethod get-product "image/tif"
-  [product_type request]
-  (let [output_name (products/generate-product "resources/y3161805_x-2115585_nodates.json" product_type query_day)]
-    {:status 200 :headers {"Content-Type" "image/tif"} :body (FileInputStream. output_name)}))
+  {:status 200 :body [(str "please define a valid Accept header of either 'application/json' or...") ]})
 
 (defmethod get-product "application/json"
   [product_type request]
@@ -37,12 +31,6 @@
         chipy (get (first input) "chipy")]
     {:status 200 :body {"chipx" chipx "chipy" chipy "values" product_values}}))
 
-(defn serve-file 
-  [request]
-  {:status 200
-   :headers {"Content-Type" "image/tif"}
-   :body (FileInputStream. "length-of-segment_-2115585_3161805.tif")})
-
 (defn healthy
   "Hello Gaia"
   [request]
@@ -52,7 +40,6 @@
   (compojure/context "/" request
                      (route/resources "/")
                      (compojure/GET "/" [] (healthy request))
-                     (compojure/GET "/foo" [] (serve-file request))
                      (compojure/GET "/product/:product_type" [product_type] (get-product product_type request))))
 
 (defn response-handler
