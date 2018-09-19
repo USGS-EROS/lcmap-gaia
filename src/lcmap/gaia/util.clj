@@ -1,7 +1,6 @@
 (ns lcmap.gaia.util
   (:require [java-time :as jt]
             [cheshire.core :as json]
-            [org.httpkit.client :as http]
             [lcmap.gaia.config :refer [config]]))
 
 (def gregorian_day_one (jt/local-date 0001 1))
@@ -63,3 +62,4 @@
   (let [coll_vals (map (fn [i] (vals i)) coll)
         vals_flat (flatten coll_vals)]
     (map mapkey vals_flat)))
+

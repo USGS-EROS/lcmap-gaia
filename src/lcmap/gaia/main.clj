@@ -18,6 +18,9 @@
   ([]
    (server/run-server))
   ([infile product queryday]
-   (let [product_data (products/data (file/read-json infile) product queryday)]
-     (println (json/generate-string {:x 1 :y 2 :product product_data})))))
+   (let [input (file/read-json infile)
+         product_data (products/data input product queryday)
+         chipx (get (first input) "chipx")
+         chipy (get (first input) "chipy")]
+     (println (json/generate-string {:x chipx :y chipy :values product_data})))))
 

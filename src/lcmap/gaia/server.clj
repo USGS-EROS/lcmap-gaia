@@ -7,29 +7,34 @@
             [ring.util.response :as ring-response]
             [org.httpkit.client :as http]
             [org.httpkit.server :as http-server]
+            [lcmap.gaia.ccdc :as ccdc]
             [lcmap.gaia.file :as file]
             [lcmap.gaia.products :as products]
             [lcmap.gaia.util :as util])
   (:import (java.io FileInputStream)))
 
 (def foo_data (file/read-json "resources/y3161805_x-2115585_nodates.json"))
-(def query_day "2006-07-01")
 
 (defmulti get-product
-  (fn [_ request] (-> request (:headers) (get "accept"))))
+  (fn [_p _q _x _y request] (-> request (:headers) (get "accept"))))
 
 (defmethod get-product :default
-  [product_type request]
+  [product_type x y query_day request]
   ; https://developer.mozilla.org/en-US/docs/Web/HTTP/Status/406
   {:status 406 :body "please define a valid Accept header of either 'application/json' or..."})
 
 (defmethod get-product "application/json"
-  [product_type request]
-  (let [input foo_data
+  [product_type x y query_day request]
+  (let [input (ccdc/results x y) 
         product_values (products/data input product_type query_day)
-        chipx (get (first input) "chipx")
-        chipy (get (first input) "chipy")]
-    {:status 200 :body {"x" chipx "y" chipy "values" product_values}}))
+        ;chipx (get (first input) "chipx")
+        ;chipy (get (first input) "chipy")
+        ]
+    {:status 200 :body {"x" x "y" y "values" product_values}}))
+
+(defn get-products
+  [request]
+  {:status 200 :body ["curve-fit"]})
 
 (defn healthy
   "Hello Gaia"
@@ -40,7 +45,8 @@
   (compojure/context "/" request
                      (route/resources "/")
                      (compojure/GET "/" [] (healthy request))
-                     (compojure/GET "/product/:product_type" [product_type] (get-product product_type request))))
+                     (compojure/GET "/available-products" [] (get-products))
+                     (compojure/GET "/product/:product_type/:x/:y/:query_day" [product_type x y query_day] (get-product product_type x y query_day request))))
 
 (defn response-handler
   [routes]
