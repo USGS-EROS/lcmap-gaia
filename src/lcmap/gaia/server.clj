@@ -25,21 +25,8 @@
 
 (defmethod get-product "image/tif"
   [product_type request]
-  (let [input (file/read-json "resources/y3161805_x-2115585_nodates.json")
-        product_fn (-> (str "lcmap.gaia.products/" product_type) (symbol) (resolve))
-        product_values (products/data input product_fn query_day)
-        product_name (str (products/product-name (first input) product_type "tif"))
-        output_name (str "target/" product_name) 
-        chipx (get (first input) "chipx")
-        chipy (get (first input) "chipy")
-        proj_wkt (util/get-projection)]
-    (prn (str "count product_values: " (count product_values)) )
-    (gdal/geotiff_from_pixel_array product_values output_name chipx chipy proj_wkt)
-    ;{:status 200 :body product} length-of-segment_-2115585_3161805.tif
-    ;(-> product_name (ring-response/file-response {:root "target/"}) (ring-response/header "content-type" "image/tif") )
-    ;(-> product_name (ring-response/file-response "length-of-segment_-2115585_3161805.tif") (ring-response/header "content-type" "image/tif") ) 
-    {:status 200 :headers {"Content-Type" "image/tif"} :body (FileInputStream. output_name)}
-))
+  (let [output_name (products/generate-product "resources/y3161805_x-2115585_nodates.json" product_type query_day)]
+    {:status 200 :headers {"Content-Type" "image/tif"} :body (FileInputStream. output_name)}))
 
 (defmethod get-product "application/json"
   [product_type request]
