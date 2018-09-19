@@ -6,6 +6,7 @@
             [lcmap.gaia.test-resources :as tr]))
 
 (def querydate "2006-07-01")
+(def chip_data tr/chip_data)
 (def first_pixel (first tr/pixel_segments))
 (def pixel_models (last first_pixel))
 (def response_set (set [:pixelx :pixely :val]))
@@ -59,3 +60,7 @@
         gt_zero (filter (fn [i] (> (:val i) 0)) results)]
     (is (= (count gt_zero) 9977))
     (is (= (count results) 10000))))
+
+(deftest data-test
+  (let [values (products/data chip_data "time-since-change" querydate)] 
+    (is (= (count values) 10000))))

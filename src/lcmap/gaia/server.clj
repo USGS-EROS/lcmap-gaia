@@ -20,7 +20,8 @@
 
 (defmethod get-product :default
   [product_type request]
-  {:status 200 :body [(str "please define a valid Accept header of either 'application/json' or...") ]})
+  ; https://developer.mozilla.org/en-US/docs/Web/HTTP/Status/406
+  {:status 406 :body "please define a valid Accept header of either 'application/json' or..."})
 
 (defmethod get-product "application/json"
   [product_type request]
@@ -28,12 +29,12 @@
         product_values (products/data input product_type query_day)
         chipx (get (first input) "chipx")
         chipy (get (first input) "chipy")]
-    {:status 200 :body {"chipx" chipx "chipy" chipy "values" product_values}}))
+    {:status 200 :body {"x" chipx "y" chipy "values" product_values}}))
 
 (defn healthy
   "Hello Gaia"
   [request]
-  {:status 200 :body ["OK"]})
+  {:status 200 :body "OK"})
 
 (compojure/defroutes routes
   (compojure/context "/" request
