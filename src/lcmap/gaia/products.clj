@@ -2,6 +2,8 @@
   (:require [clojure.tools.logging :as log]
             [clojure.string        :as string]
             [clojure.math.numeric-tower :as math]
+            [lcmap.gaia.file       :as file]
+            [lcmap.gaia.gdal       :as gdal]
             [lcmap.gaia.util       :as util]))
 
 (defn product-name
@@ -99,4 +101,13 @@
     ; finally, flatten to a one dimensional list
     (util/flatten-vals sorted-y-rows :val)))
 
-
+(defn generate-product
+  [infile product queryday]
+  (let [input (file/read-json infile)
+        product_fn (resolve (symbol (str "lcmap.gaia.products/" product)))
+        product_values (data input product_fn queryday)
+        output_name (product-name (first input) product "tif")
+        chipx (get (first input) "chipx")
+        chipy (get (first input) "chipy")
+        proj_wkt (util/get-projection)]
+    (gdal/geotiff_from_pixel_array product_values output_name chipx chipy proj_wkt)))

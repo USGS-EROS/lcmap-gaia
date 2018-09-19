@@ -58,4 +58,7 @@
     (.SetProjection tif_dataset proj_wkt)
     (.WriteRaster tif_band 0 0 100 100 (float-array pixel_array)) 
     ; write to disk
-    (.delete tif_band)))
+    (.delete tif_band)
+    (.delete tif_dataset))
+  output_name)
+
