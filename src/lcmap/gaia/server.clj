@@ -10,10 +10,8 @@
             [lcmap.gaia.ccdc :as ccdc]
             [lcmap.gaia.file :as file]
             [lcmap.gaia.products :as products]
-            [lcmap.gaia.util :as util])
-  (:import (java.io FileInputStream)))
+            [lcmap.gaia.util :as util]))
 
-(def foo_data (file/read-json "resources/y3161805_x-2115585_nodates.json"))
 
 (defmulti get-product
   (fn [_p _q _x _y request] (-> request (:headers) (get "accept"))))
@@ -26,15 +24,13 @@
 (defmethod get-product "application/json"
   [product_type x y query_day request]
   (let [input (ccdc/results x y) 
-        product_values (products/data input product_type query_day)
-        ;chipx (get (first input) "chipx")
-        ;chipy (get (first input) "chipy")
-        ]
+        product_values (products/data input product_type query_day)]
     {:status 200 :body {"x" x "y" y "values" product_values}}))
 
 (defn get-products
   [request]
-  {:status 200 :body ["curve-fit"]})
+  {:status 200 :body ["curve-fit" "time-of-change" "time-since-change" 
+                      "magnitude-of-change" "length-of-segment"]})
 
 (defn healthy
   "Hello Gaia"
