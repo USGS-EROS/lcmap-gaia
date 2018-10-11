@@ -3,7 +3,6 @@
             [clojure.string        :as string]
             [clojure.math.numeric-tower :as math]
             [lcmap.gaia.file       :as file]
-            [lcmap.gaia.gdal       :as gdal]
             [lcmap.gaia.util       :as util]))
 
 (defn product-name
@@ -12,6 +11,10 @@
         chipy (get model "chipy")
         name  (string/join "_" [product chipx chipy])]
     (str name "." fmt)))
+
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+;;;;;;;;;;;;;;;    CHANGE PRODUCTS    ;;;;;;;;;;;;;;;;;
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
 (defn time-of-change
   "Return numeric day of year in which a break occurs"
@@ -82,13 +85,55 @@
    (let [values (map #(curve-fit % query-day (get pixel_map "pixelx") (get pixel_map "pixely")) pixel_models)]
      (last (sort-by :val values)))))
 
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+;;;;;;;;;;;    CLASSIFICATION PRODUCTS    ;;;;;;;;;;;;;
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+
+(defn primary-landcover
+  "Return highest landcover class value for intersecting segments, between segments
+  or outside time series"
+  ([model query-day x y]
+   (let [start-day (get model "sday")
+         end-day   (get model "eday")
+         query-ord (-> query-day (util/to-javatime) (util/javatime-to-ordinal))
+         query-inclusive (<= start-day query-ord end-day)
+         max-prob (max (get model "class_probabilities"))
+         between_seg_val (get model "betweensegmentvalue")]
+     (hash-map :pixelx x :pixely y :)
+     )
+
+  ) 
+  ([pixel_map pixel_models query-day]
+   (let [values (map #(primary-landcover % (get pixel_map "pixelx") (get pixel_map "pixely")) pixel_models)]
+
+     )))
+-
+(defn secondary-landcover
+  "Return the second highest landcover class value"
+  ([model query-day x y])
+  ([pixel_map pixel_models query-day])
+)
+
+(defn primary-landcover-confidence
+  "Return the landcover probability for the highest landcover class value"
+  ([model query-day x y])
+  ([pixel_map pixel_models query-day])
+)
+
+(defn secondary-landcover-confidence
+  "Return the landcover probability for the 2nd highest landcover class value"
+  ([model query-day x y])
+  ([pixel_map pixel_models query-day])
+)
+
 (defn data
   "Returns a flat list of product values from JSON of a chips worth of CCDC results"
-  [injson product_fn queryday]
+  [injson product_type queryday]
   (let [; group segments by pixel coordinates
         pixel_segments (util/coll-groups injson ["pixelx" "pixely"])
         ; map the products function across the pixel segments. Returns a flat
         ; collection, one hash map per pixel coordinate pair.
+        product_fn (-> (str "lcmap.gaia.products/" product_type) (symbol) (resolve))
         pixel_array (map #(product_fn (first %) (last %) queryday) pixel_segments)
         ; group product coll by row 
         ; [{:pixely 3159045} [{:pixely 3159045, :pixelx -2114775, :val 6290},...] ...]
@@ -101,13 +146,3 @@
     ; finally, flatten to a one dimensional list
     (util/flatten-vals sorted-y-rows :val)))
 
-(defn generate-product
-  [infile product queryday]
-  (let [input (file/read-json infile)
-        product_fn (resolve (symbol (str "lcmap.gaia.products/" product)))
-        product_values (data input product_fn queryday)
-        output_name (product-name (first input) product "tif")
-        chipx (get (first input) "chipx")
-        chipy (get (first input) "chipy")
-        proj_wkt (util/get-projection)]
-    (gdal/geotiff_from_pixel_array product_values output_name chipx chipy proj_wkt)))
