@@ -14,8 +14,6 @@
                  [environ                   "1.1.0"]
                  [http-kit                  "2.2.0"]
                  [http-kit.fake             "0.2.1"]
-                 [org.gdal/gdal             "2.2.0"]
-                 [mount                     "0.1.12"]
                  [ring                      "1.6.3"]
                  [ring/ring-defaults        "0.3.1"]
                  [ring/ring-json            "0.4.0"]

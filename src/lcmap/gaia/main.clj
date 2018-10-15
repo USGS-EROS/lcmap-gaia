@@ -1,10 +1,10 @@
 (ns lcmap.gaia.main
   (:gen-class)
   (:require [clojure.tools.logging :as log]
-            [mount.core            :as mount]
+            [cheshire.core         :as json]
             [lcmap.gaia.config     :refer [config]]
+            [lcmap.gaia.file       :as file]
             [lcmap.gaia.products   :as products]
-            [lcmap.gaia.gdal       :as gdal]
             [lcmap.gaia.server     :as server]))
 
 ;; ccdc results are the number of change segments
@@ -16,11 +16,11 @@
 
 (defn -main
   ([]
-   (mount/start)
    (server/run-server))
   ([infile product queryday]
-   ;; Only mount states defined in required namespaces are started.
-   (mount/start)
-   (products/generate-product infile product queryday)
-   (System/exit 0)))
+   (let [input (file/read-json infile)
+         product_data (products/data input product queryday)
+         chipx (get (first input) "chipx")
+         chipy (get (first input) "chipy")]
+     (println (json/generate-string {:x chipx :y chipy :values product_data})))))
 

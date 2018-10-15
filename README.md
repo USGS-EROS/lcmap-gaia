@@ -10,7 +10,6 @@ Gaia is run as a Docker container.
 
 ```
 docker run -p 9876:9876 -e NEMO_HOST=${NEMO_HOST} \
-                        -e CHIPMUNK_HOST=${CHIPMUNK_HOST}
                         -it usgseros/lcmap-gaia:latest
 ```
 
@@ -19,7 +18,6 @@ Gaia is configured using these environment variables:
 | ENV             | Description                          |
 |-----------------|--------------------------------------|
 | `NEMO_HOST`     | base url for lcmap-nemo resource     |
-| `CHIPMUNK_HOST` | base url for lcmap-chipmunk resource |
 
 
 ## Running a local Gaia
