@@ -7,8 +7,8 @@
 
 (defn product-name
   [model product fmt]
-  (let [chipx (get model "chipx")
-        chipy (get model "chipy")
+  (let [chipx (get model "cx")
+        chipy (get model "cy")
         name  (string/join "_" [product chipx chipy])]
     (str name "." fmt)))
 
@@ -20,7 +20,7 @@
   "Return numeric day of year in which a break occurs"
   ([model query-day x y]
    (let [change-prob (get model "chprob")
-         break-day   (get model "bday")
+         break-day   (-> (get model "bday") (util/to-ordinal)) 
          query-year  (-> query-day (util/to-javatime) (util/javatime-year))
          break-year  (-> break-day (util/ordinal-to-javatime) (util/javatime-year))
          response    #(hash-map :pixelx x :pixely y :val %)]
@@ -28,26 +28,26 @@
        (-> break-day (util/ordinal-to-javatime) (util/javatime-day-of-year) response) 
        (-> 0 response))))
   ([pixel_map pixel_models query-day]
-   (let [values (map #(time-of-change % query-day (get pixel_map "pixelx") (get pixel_map "pixely")) pixel_models)]
+   (let [values (map #(time-of-change % query-day (get pixel_map "px") (get pixel_map "py")) pixel_models)]
      (last (sort-by :val values)))))
 
 (defn time-since-change
   "Return cumulative distance to previous break"
   ([model query-day x y]
    (let [change-prob (get model "chprob")
-         break-day   (get model "bday")
-         query-ord   (-> query-day (util/to-javatime) (util/javatime-to-ordinal))
+         break-day   (-> (get model "bday") (util/to-ordinal)) 
+         query-ord   (-> query-day (util/to-ordinal))
          distance    (if (= 1.0 change-prob) (- query-ord break-day) 0)] ; can't use nil, dont think 0 is appropriate
      (hash-map :pixelx x :pixely y :val distance)))
   ([pixel_map pixel_models query-day]
-   (let [values (map #(time-since-change % query-day (get pixel_map "pixelx") (get pixel_map "pixely")) pixel_models)]
+   (let [values (map #(time-since-change % query-day (get pixel_map "px") (get pixel_map "py")) pixel_models)]
      (last (filter (fn [i] (some? (:val i))) (sort-by :val values))))))
 
 (defn magnitude-of-change
   "Return severity of spectral shift"
   ([model query-day x y]
    (let [change-prob (get model "chprob")
-         break-day   (get model "bday")
+         break-day   (-> (get model "bday") (util/to-ordinal)) 
          query-year  (-> query-day (util/to-javatime) (util/javatime-year))
          break-year  (-> break-day (util/ordinal-to-javatime) (util/javatime-year))
          magnitudes  [(get model "grmag") (get model "remag") (get model "nimag") (get model "s1mag") (get model "s2mag")]
@@ -57,32 +57,34 @@
        (-> euc-norm (response))
        (-> 0 (response)))))
   ([pixel_map pixel_models query-day]
-   (let [values (map #(magnitude-of-change % query-day (get pixel_map "pixelx") (get pixel_map "pixely")) pixel_models)]
+   (let [values (map #(magnitude-of-change % query-day (get pixel_map "px") (get pixel_map "py")) pixel_models)]
      (last (sort-by :val values)))))
 
 (defn length-of-segment
   "Return length of change segment in days"
   ([model query-day x y]
-   (let [query-ord (-> query-day (util/to-javatime) (util/javatime-to-ordinal))
-         startends [(- query-ord (get model "sday")) (- query-ord (get model "eday"))]
+   (let [query-ord (-> query-day (util/to-ordinal))
+         start-day (-> (get model "sday") (util/to-ordinal))
+         end-day   (-> (get model "eday") (util/to-ordinal))
+         startends [(- query-ord start-day) (- query-ord end-day)]
          positives (filter (fn [i] (> i 0)) startends)
          minimum   (if (= 0 (count positives)) 0 (apply min positives))]
      (hash-map :pixelx x :pixely y :val minimum)))
   ([pixel_map pixel_models query-day]
-   (let [values (map #(length-of-segment % query-day (get pixel_map "pixelx") (get pixel_map "pixely")) pixel_models)]
+   (let [values (map #(length-of-segment % query-day (get pixel_map "px") (get pixel_map "py")) pixel_models)]
      (first (sort-by :val values)))))
 
 (defn curve-fit
   "Return Curve QA for point in time"
   ([model query-day x y]
-   (let [query-ord (-> query-day (util/to-javatime) (util/javatime-to-ordinal))
+   (let [query-ord (-> query-day (util/to-ordinal))
          curve-qa  (get model "curqa")
-         start-day (get model "sday")
-         end-day   (get model "eday")
+         start-day (-> (get model "sday") (util/to-ordinal)) 
+         end-day   (-> (get model "eday") (util/to-ordinal)) 
          value     (if (<= start-day query-ord end-day) curve-qa 0)]
      (hash-map :pixelx x :pixely y :val value)))
   ([pixel_map pixel_models query-day]
-   (let [values (map #(curve-fit % query-day (get pixel_map "pixelx") (get pixel_map "pixely")) pixel_models)]
+   (let [values (map #(curve-fit % query-day (get pixel_map "px") (get pixel_map "py")) pixel_models)]
      (last (sort-by :val values)))))
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
@@ -93,18 +95,18 @@
   "Return highest landcover class value for intersecting segments, between segments
   or outside time series"
   ([model query-day x y]
-   (let [start-day (get model "sday")
-         end-day   (get model "eday")
+   (let [start-day (-> (get model "sday") (util/to-ordinal)) 
+         end-day   (-> (get model "eday") (util/to-ordinal)) 
          query-ord (-> query-day (util/to-javatime) (util/javatime-to-ordinal))
          query-inclusive (<= start-day query-ord end-day)
-         max-prob (max (get model "class_probabilities"))
+         max-prob (max (get model "clprob"))
          between_seg_val (get model "betweensegmentvalue")]
-     (hash-map :pixelx x :pixely y :)
+     (hash-map :pixelx x :pixely y )
      )
 
   ) 
   ([pixel_map pixel_models query-day]
-   (let [values (map #(primary-landcover % (get pixel_map "pixelx") (get pixel_map "pixely")) pixel_models)]
+   (let [values (map #(primary-landcover % (get pixel_map "px") (get pixel_map "py")) pixel_models)]
 
      )))
 -
@@ -126,11 +128,25 @@
   ([pixel_map pixel_models query-day])
 )
 
+(defn variable-juxt
+  "Return a juxt function that returns the values for the specified map keys"
+  [mapkeys]
+  (apply juxt (map (fn [i] #(get % i)) mapkeys)))
+
+(defn merge-maps-by-keys
+  "Merge two lists of hash-maps, joining the list members by the key values
+   specified in the mapkeys argument"
+  [maplist1 maplist2 mapkeys]
+  (let [conc_lists (concat maplist1 maplist2)
+        grouped_lists (group-by (variable-juxt mapkeys) conc_lists)]
+    (map #(merge (first %) (last %)) (vals grouped_lists))))
+
 (defn data
   "Returns a flat list of product values from JSON of a chips worth of CCDC results"
-  [injson product_type queryday]
+  [segments_json predictions_json product_type queryday]
   (let [; group segments by pixel coordinates
-        pixel_segments (util/coll-groups injson ["pixelx" "pixely"])
+        pixel_segments (util/coll-groups segments_json ["px" "py"])
+        pixel_predictions (util/coll-groups predictions_json ["px" "py"])
         ; map the products function across the pixel segments. Returns a flat
         ; collection, one hash map per pixel coordinate pair.
         product_fn (-> (str "lcmap.gaia.products/" product_type) (symbol) (resolve))

@@ -38,7 +38,7 @@
 (deftest magnitude-of-change-chip-level-test
   (let [results (map #(products/magnitude-of-change (first %) (last %) querydate) tr/pixel_segments)
         gt_zero (filter (fn [i] (> (:val i) 0)) results)]
-    (is (= (count gt_zero) 54))
+    (is (= (count gt_zero) 387))
     (is (= (count results) 10000))))
 
 (deftest length-of-segment-single-model-test
@@ -48,7 +48,7 @@
 (deftest length-of-segment-chip-level-test
   (let [results (map #(products/length-of-segment (first %) (last %) querydate) tr/pixel_segments)
         gt_zero (filter (fn [i] (> (:val i) 0)) results)]
-    (is (= (count gt_zero) 9942))
+    (is (= (count gt_zero) 5633))
     (is (= (count results) 10000))))
 
 (deftest curve-fit-single-model-test
@@ -58,9 +58,10 @@
 (deftest curve-fit-chip-level-test
   (let [results (map #(products/curve-fit (first %) (last %) querydate) tr/pixel_segments)
         gt_zero (filter (fn [i] (> (:val i) 0)) results)]
-    (is (= (count gt_zero) 9977))
+    (is (= (count gt_zero) 9989))
     (is (= (count results) 10000))))
 
 (deftest data-test
-  (let [values (products/data chip_data "time-since-change" querydate)] 
+  ;; FIXME !!
+  (let [values (products/data chip_data chip_data "time-since-change" querydate)] 
     (is (= (count values) 10000))))
