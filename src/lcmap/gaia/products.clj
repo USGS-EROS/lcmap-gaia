@@ -6,6 +6,20 @@
             [lcmap.gaia.file       :as file]
             [lcmap.gaia.util       :as util]))
 
+(def default_classes
+  (hash-map "lc_inbtw"       9 ; default value for between models
+            "lc_insuff"     10 ; insufficient data, such as at the end of a time series
+            "lcc_growth"   151
+            "lcc_decline"  152
+            "lcc_nomodel"  201
+            "lcc_forwards" 202
+            "lcc_samelc"   211
+            "lcc_difflc"   212
+            "lcc_back"     213
+            "lcc_afterbr"  214))
+
+(defn sort-by-sday [models] (sort-by (fn [i] (get i "sday")) models))
+
 (defn product-name
   [model product fmt]
   (let [chipx (get model "cx")
@@ -92,6 +106,16 @@
 ;;;;;;;;;;;    CLASSIFICATION PRODUCTS    ;;;;;;;;;;;;;
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
+(defn model-class
+  "Return the index of the desired classification confidence"
+  [model query-day rank]
+  (let [probs (get model "probs")
+        sorted (reverse (sort probs)) 
+        max_val (first sorted)
+        2nd_val (second sorted)])
+;https://stackoverflow.com/questions/4830900/how-do-i-find-the-index-of-an-item-in-a-vector
+)
+
 (defn primary-landcover
   "Return highest landcover class value for intersecting segments, between segments
   or outside time series"
@@ -107,10 +131,11 @@
 
   ) 
   ([pixel_map pixel_models query-day]
-   (let [values (map #(primary-landcover % (get pixel_map "px") (get pixel_map "py")) pixel_models)]
+   (let [sorted_models (sort-by-sday pixel_models)
+         values (map #(primary-landcover % query-day (get pixel_map "px") (get pixel_map "py")) sorted_models)]
 
      )))
--
+
 (defn secondary-landcover
   "Return the second highest landcover class value"
   ([model query-day x y])
