@@ -1,4 +1,5 @@
 (ns lcmap.gaia.products
+  (:gen-class)
   (:require [clojure.tools.logging :as log]
             [clojure.string        :as string]
             [clojure.math.numeric-tower :as math]
@@ -144,9 +145,10 @@
 (defn data
   "Returns a flat list of product values from JSON of a chips worth of CCDC results"
   [segments_json predictions_json product_type queryday]
-  (let [; group segments by pixel coordinates
-        pixel_segments (util/coll-groups segments_json ["px" "py"])
-        pixel_predictions (util/coll-groups predictions_json ["px" "py"])
+  (let [; merge segments and predictions by px, py, cx, cy, sday and eday
+        segments_predictions (merge-maps-by-keys segments_json predictions_json ["px" "py" "cx" "cy" "sday" "eday"])
+        ; group segments by pixel coordinates
+        pixel_segments (util/coll-groups segments_predictions ["px" "py"])
         ; map the products function across the pixel segments. Returns a flat
         ; collection, one hash map per pixel coordinate pair.
         product_fn (-> (str "lcmap.gaia.products/" product_type) (symbol) (resolve))
