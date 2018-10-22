@@ -4,19 +4,8 @@
             [clojure.string        :as string]
             [clojure.math.numeric-tower :as math]
             [lcmap.gaia.file       :as file]
-            [lcmap.gaia.util       :as util]))
-
-(def default_classes
-  (hash-map "lc_inbtw"       9 ; default value for between models
-            "lc_insuff"     10 ; insufficient data, such as at the end of a time series
-            "lcc_growth"   151
-            "lcc_decline"  152
-            "lcc_nomodel"  201
-            "lcc_forwards" 202
-            "lcc_samelc"   211
-            "lcc_difflc"   212
-            "lcc_back"     213
-            "lcc_afterbr"  214))
+            [lcmap.gaia.util       :as util]
+            [lcmap.gaia.config     :refer [config]]))
 
 (defn sort-by-sday [models] (sort-by (fn [i] (get i "sday")) models))
 
@@ -106,35 +95,109 @@
 ;;;;;;;;;;;    CLASSIFICATION PRODUCTS    ;;;;;;;;;;;;;
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
+(defn ismap?
+  "Returns boolean true / false if input is a map "
+  [input]
+  (= (type input) clojure.lang.PersistentArrayMap))
+
+(defn falls_between
+  "Used to reduce a sorted list of maps to the members
+  surrounding a query day"
+  [mapA mapB]
+  (if (ismap? mapA)
+      (if (= true (:follows mapA) (:precedes mapB))
+          (do [mapA mapB])
+          (do mapB))       
+      (do mapA)))
+
 (defn model-class
   "Return the index of the desired classification confidence"
   [model query-day rank]
   (let [probs (get model "probs")
         sorted (reverse (sort probs)) 
-        max_val (first sorted)
-        2nd_val (second sorted)])
-;https://stackoverflow.com/questions/4830900/how-do-i-find-the-index-of-an-item-in-a-vector
+        position (.indexOf probs (nth sorted rank))
+        sday (-> (get model "sday") (util/to-ordinal)) 
+        eday (-> (get model "eday") (util/to-ordinal)) 
+        intersects (<= sday query-day eday)
+        precedes   (< query-day sday)
+        follows    (> eday query-day)]
+    (hash-map :intersects intersects
+              :precedes   precedes
+              :follows    follows
+              :value (nth (:lc_map config) position))))
+
+(defn landcover
+  [pixel_map models query_day rank]
+  (let [px (get pixel_map "px") ; do we need these?
+        py (get pixel_map "py")
+        sorted_models     (sort-by-sday models)
+        query_ord         (-> query_day (util/to-ordinal))
+        first_start_day   (-> (first sorted_models) (get "sday") (util/to-ordinal))
+        last_end_day      (-> (last sorted_models)  (get "eday") (util/to-ordinal))
+        model_classes     (map #(model-class % query_ord rank) sorted_models)
+        intercepted_model (first (filter :intersects model_classes))
+        fell_between      (reduce falls_between model_classes)]
+
+    ; if query_ord is less than first_start_day 
+    ;
+    ;    if (:fill_begin config)
+    ;       return (model-class (first sorted_models) query_ord "first")
+    ;    return (:lc_insuff (:lc_defaults config))
+
+
+    ; if query_ord is greater than the last_end_day
+
+    ;; (if intercepted_model
+    ;;   (:value intercepted_model))
+
+    (cond
+      (= true (< query_ord first_start_day)  (:fill_begin config)) 
+        (:value (first model_classes))
+      (= true (< query_ord first_start_day)) 
+        (:lc_insuff (:lc_defaults config))
+      (= true (> last_end_day query_ord) (:fill_end config)) 
+        (:value (last model_classes))
+      (= true (> last_end_day query_ord))    
+        (:lc_insuff (:lc_defaults config))
+      (not (nil? intercepted_model))         
+        (:value intercepted_model)
+      (= true (:fill_samelc config) (= (:value (first fell_between)) (:value (last fell_between))))
+        (:value (last fell_between))
+      (= true (:fill_difflc config) )
+      ) ;close cond
+
+
+
+
+
+
+    )
 )
 
-(defn primary-landcover
-  "Return highest landcover class value for intersecting segments, between segments
-  or outside time series"
-  ([model query-day x y]
-   (let [start-day (-> (get model "sday") (util/to-ordinal)) 
-         end-day   (-> (get model "eday") (util/to-ordinal)) 
-         query-ord (-> query-day (util/to-javatime) (util/javatime-to-ordinal))
-         query-inclusive (<= start-day query-ord end-day)
-         max-prob (max (get model "clprob"))
-         between_seg_val (get model "betweensegmentvalue")]
-     (hash-map :pixelx x :pixely y )
-     )
 
-  ) 
-  ([pixel_map pixel_models query-day]
-   (let [sorted_models (sort-by-sday pixel_models)
-         values (map #(primary-landcover % query-day (get pixel_map "px") (get pixel_map "py")) sorted_models)]
 
-     )))
+
+
+
+;; (defn primary-landcover-orig
+;;   "Return highest landcover class value for intersecting segments, between segments
+;;   or outside time series"
+;;   ([model query-day x y]
+;;    (let [start-day (-> (get model "sday") (util/to-ordinal)) 
+;;          end-day   (-> (get model "eday") (util/to-ordinal)) 
+;;          query-ord (-> query-day (util/to-javatime) (util/javatime-to-ordinal))
+;;          query-inclusive (<= start-day query-ord end-day)
+;;          max-prob (max (get model "clprob"))
+;;          between_seg_val (get model "betweensegmentvalue")]
+;;      (hash-map :pixelx x :pixely y )
+;;      )
+
+;;   ) 
+;;   ([pixel_map pixel_models query-day]
+;;    (let [sorted_models (sort-by-sday pixel_models)
+;;          values (map #(primary-landcover % query-day (get pixel_map "px") (get pixel_map "py")) sorted_models)]
+
+;;      )))
 
 (defn secondary-landcover
   "Return the second highest landcover class value"
