@@ -100,28 +100,29 @@
   [input]
   (= (type input) clojure.lang.PersistentArrayMap))
 
-(defn falls_between
-  "Used to reduce a sorted list of maps to the members
-  surrounding a query day"
-  [mapA mapB end_key start_key]
-  (if (ismap? mapA)
-      (if (= true (end_key mapA) (start_key mapB))
-          (do [mapA mapB])
-          (do mapB))       
-      (do mapA)))
+(defn matching-keys
+  "Return a collection of the map arguments if the key values equal the 
+   desired match value, else return map_b. Used in a call to reduce for
+   identifying desired maps in a collection"
+  [map_a map_b key_a key_b match_value]
+  (if (ismap? map_a)
+      (if (= match_value (key_a map_a) (key_b map_b))
+          (do [map_a map_b])
+          (do map_b))       
+      (do map_a)))
 
-(defn falls_between_eday_sday
-  [mapA mapB]
-  (falls_between mapA mapB :follows_eday :precedes_sday))
+(defn falls-between-eday-sday
+  [map_a map_b]
+  (matching-keys map_a map_b :follows_eday :precedes_sday true))
 
-(defn falls_between_bday_sday
-  [mapA mapB]
-  (falls_between mapA mapB :follows_bday :precedes_sday))
+(defn falls-between-bday-sday
+  [map_a map_b]
+  (matching-keys map_a map_b :follows_bday :precedes_sday true))
 
 (defn model-class
   "Return the index of the desired classification confidence"
   [model query-day rank]
-  (let [probs (get model "probs")
+  (let [probs (get model "prob")
         sorted (reverse (sort probs)) 
         position (.indexOf probs (nth sorted rank))
         sday (-> (get model "sday") (util/to-ordinal)) 
@@ -153,8 +154,8 @@
         model_classes     (map #(model-class % query_ord rank) sorted_models)
         intercepted_model (first (filter :intersects model_classes))
         eday_bday_model   (first (filter :btw_eday_bday model_classes))
-        fell_between_eday_sday (reduce falls_between_eday_sday model_classes)
-        fell_between_bday_sday (reduce falls_between_bday_sday model_classes)]
+        fell_between_eday_sday (reduce falls-between-eday-sday model_classes)
+        fell_between_bday_sday (reduce falls-between-bday-sday model_classes)]
 
     (cond
       ; query date preceds first segment start date and fill_begin config is true
@@ -214,15 +215,11 @@
 
 (defn primary-landcover-confidence
   "Return the landcover probability for the highest landcover class value"
-  ([model query-day x y])
-  ([pixel_map pixel_models query-day])
-)
+  [pixel_map pixel_models query-day])
 
 (defn secondary-landcover-confidence
   "Return the landcover probability for the 2nd highest landcover class value"
-  ([model query-day x y])
-  ([pixel_map pixel_models query-day])
-)
+  [pixel_map pixel_models query-day])
 
 (defn variable-juxt
   "Return a juxt function that returns the values for the specified map keys"

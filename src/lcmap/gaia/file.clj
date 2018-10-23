@@ -1,4 +1,5 @@
 (ns lcmap.gaia.file
+  (:gen-class)
   (:require [cheshire.core :as json]))
 
 (defn read-json

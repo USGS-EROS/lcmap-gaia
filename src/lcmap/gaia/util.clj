@@ -1,4 +1,5 @@
 (ns lcmap.gaia.util
+  (:gen-class)
   (:require [java-time :as jt]
             [cheshire.core :as json]
             [lcmap.gaia.config :refer [config]]))
