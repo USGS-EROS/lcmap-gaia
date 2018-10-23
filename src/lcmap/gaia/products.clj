@@ -96,19 +96,27 @@
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
 (defn ismap?
-  "Returns boolean true / false if input is a map "
+  "Returns boolean true / false if input is a hash-map "
   [input]
   (= (type input) clojure.lang.PersistentArrayMap))
 
 (defn falls_between
   "Used to reduce a sorted list of maps to the members
   surrounding a query day"
-  [mapA mapB]
+  [mapA mapB end_key start_key]
   (if (ismap? mapA)
-      (if (= true (:follows mapA) (:precedes mapB))
+      (if (= true (end_key mapA) (start_key mapB))
           (do [mapA mapB])
           (do mapB))       
       (do mapA)))
+
+(defn falls_between_eday_sday
+  [mapA mapB]
+  (falls_between mapA mapB :follows_eday :precedes_sday))
+
+(defn falls_between_bday_sday
+  [mapA mapB]
+  (falls_between mapA mapB :follows_bday :precedes_sday))
 
 (defn model-class
   "Return the index of the desired classification confidence"
@@ -117,13 +125,21 @@
         sorted (reverse (sort probs)) 
         position (.indexOf probs (nth sorted rank))
         sday (-> (get model "sday") (util/to-ordinal)) 
-        eday (-> (get model "eday") (util/to-ordinal)) 
-        intersects (<= sday query-day eday)
-        precedes   (< query-day sday)
-        follows    (> eday query-day)]
-    (hash-map :intersects intersects
-              :precedes   precedes
-              :follows    follows
+        eday (-> (get model "eday") (util/to-ordinal))
+        bday (-> (get model "bday") (util/to-ordinal))
+        intersects        (<= sday query-day eday)
+        precedes_sday     (< query-day sday)
+        follows_eday      (> eday query-day)
+        follows_bday      (>= bday query-day)
+        between_eday_bday (> eday query-day bday)]
+    (hash-map :intersects    intersects
+              :precedes_sday precedes_sday
+              :follows_eday  follows_eday
+              :follows_bday  follows_bday
+              :btw_eday_bday between_eday_bday
+              :sday          sday
+              :eday          eday
+              :bday          bday
               :value (nth (:lc_map config) position))))
 
 (defn landcover
@@ -136,74 +152,65 @@
         last_end_day      (-> (last sorted_models)  (get "eday") (util/to-ordinal))
         model_classes     (map #(model-class % query_ord rank) sorted_models)
         intercepted_model (first (filter :intersects model_classes))
-        fell_between      (reduce falls_between model_classes)]
-
-    ; if query_ord is less than first_start_day 
-    ;
-    ;    if (:fill_begin config)
-    ;       return (model-class (first sorted_models) query_ord "first")
-    ;    return (:lc_insuff (:lc_defaults config))
-
-
-    ; if query_ord is greater than the last_end_day
-
-    ;; (if intercepted_model
-    ;;   (:value intercepted_model))
+        eday_bday_model   (first (filter :btw_eday_bday model_classes))
+        fell_between_eday_sday (reduce falls_between_eday_sday model_classes)
+        fell_between_bday_sday (reduce falls_between_bday_sday model_classes)]
 
     (cond
-      (= true (< query_ord first_start_day)  (:fill_begin config)) 
+      ; query date preceds first segment start date and fill_begin config is true
+      (= true (< query_ord first_start_day) (:fill_begin config))
+        ; return value of the first model
         (:value (first model_classes))
-      (= true (< query_ord first_start_day)) 
+
+      ; query date preceds first segment start date
+      (= true (< query_ord first_start_day))
+        ; return lc_insuff value from lc_defaults config 
         (:lc_insuff (:lc_defaults config))
-      (= true (> last_end_day query_ord) (:fill_end config)) 
+
+      ; query date follows last segment end date and fill_end config is true
+      (= true (> last_end_day query_ord) (:fill_end config))
+        ; return the value from the last model
         (:value (last model_classes))
-      (= true (> last_end_day query_ord))    
+
+      ; query date follows last segment end date
+      (= true (> last_end_day query_ord))
+        ; return the lc_insuff value from the lc_defaults config
         (:lc_insuff (:lc_defaults config))
-      (not (nil? intercepted_model))         
+
+      ; query date falls between a segments start date and end date
+      (not (nil? intercepted_model))
+        ; return the class value for the intercepted model
         (:value intercepted_model)
-      (= true (:fill_samelc config) (= (:value (first fell_between)) (:value (last fell_between))))
-        (:value (last fell_between))
-      (= true (:fill_difflc config) )
-      ) ;close cond
 
+      ; query date falls between segments of same landcover classification and fill_samelc config is true
+      (= true (:fill_samelc config) (= (:value (first fell_between_eday_sday)) (:value (last fell_between_eday_sday))))
+        ; return the value from the last model from the pair of models the query date fell between
+        (:value (last fell_between_eday_sday))
 
+      ; query date falls between one segments break date and the following segments start date and fill_difflc config is true
+      (= true (:fill_difflc config) (not (nil? (last fell_between_bday_sday))))
+        ; return the value from the last model from the pair of models the query date fell between
+        (:value (last fell_between_bday_sday ))
 
+      ; query date falls between a segments end date and break date and fill_difflc config is true
+      (= true (:fill_difflc config) (not (nil? eday_bday_model)))
+        ; return the value from the model where the query date intersected the end date and break date
+        (:value eday_bday_model)
+     
+      ; finally as a last resort
+      :else
+        ; return the lc_inbtw value from the configuration
+        (:lc_inbtw config))))
 
-
-
-    )
-)
-
-
-
-
-
-
-;; (defn primary-landcover-orig
-;;   "Return highest landcover class value for intersecting segments, between segments
-;;   or outside time series"
-;;   ([model query-day x y]
-;;    (let [start-day (-> (get model "sday") (util/to-ordinal)) 
-;;          end-day   (-> (get model "eday") (util/to-ordinal)) 
-;;          query-ord (-> query-day (util/to-javatime) (util/javatime-to-ordinal))
-;;          query-inclusive (<= start-day query-ord end-day)
-;;          max-prob (max (get model "clprob"))
-;;          between_seg_val (get model "betweensegmentvalue")]
-;;      (hash-map :pixelx x :pixely y )
-;;      )
-
-;;   ) 
-;;   ([pixel_map pixel_models query-day]
-;;    (let [sorted_models (sort-by-sday pixel_models)
-;;          values (map #(primary-landcover % query-day (get pixel_map "px") (get pixel_map "py")) sorted_models)]
-
-;;      )))
+(defn primary-landcover
+  "Return the  highest landcover class value"
+  [pixel_map pixel_models query_day]
+  (landcover pixel_map pixel_models query_day 0))
 
 (defn secondary-landcover
   "Return the second highest landcover class value"
-  ([model query-day x y])
-  ([pixel_map pixel_models query-day])
-)
+  [pixel_map pixel_models query_day] 
+  (landcover pixel_map pixel_models query_day 1))
 
 (defn primary-landcover-confidence
   "Return the landcover probability for the highest landcover class value"
