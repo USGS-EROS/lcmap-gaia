@@ -95,29 +95,13 @@
 ;;;;;;;;;;;    CLASSIFICATION PRODUCTS    ;;;;;;;;;;;;;
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
-(defn ismap?
-  "Returns boolean true / false if input is a hash-map "
-  [input]
-  (= (type input) clojure.lang.PersistentArrayMap))
-
-(defn matching-keys
-  "Return a collection of the map arguments if the key values equal the 
-   desired match value, else return map_b. Used in a call to reduce for
-   identifying desired maps in a collection"
-  [map_a map_b key_a key_b match_value]
-  (if (ismap? map_a)
-      (if (= match_value (key_a map_a) (key_b map_b))
-          (do [map_a map_b])
-          (do map_b))       
-      (do map_a)))
-
 (defn falls-between-eday-sday
   [map_a map_b]
-  (matching-keys map_a map_b :follows_eday :precedes_sday true))
+  (util/matching-keys map_a map_b :follows_eday :precedes_sday true))
 
 (defn falls-between-bday-sday
   [map_a map_b]
-  (matching-keys map_a map_b :follows_bday :precedes_sday true))
+  (util/matching-keys map_a map_b :follows_bday :precedes_sday true))
 
 (defn model-class
   "Return the index of the desired classification confidence"
@@ -130,8 +114,8 @@
         bday (-> (get model "bday") (util/to-ordinal))
         intersects        (<= sday query-day eday)
         precedes_sday     (< query-day sday)
-        follows_eday      (> eday query-day)
-        follows_bday      (>= bday query-day)
+        follows_eday      (> query-day eday)
+        follows_bday      (>= query-day bday)
         between_eday_bday (> eday query-day bday)]
     (hash-map :intersects    intersects
               :precedes_sday precedes_sday
@@ -221,24 +205,11 @@
   "Return the landcover probability for the 2nd highest landcover class value"
   [pixel_map pixel_models query-day])
 
-(defn variable-juxt
-  "Return a juxt function that returns the values for the specified map keys"
-  [mapkeys]
-  (apply juxt (map (fn [i] #(get % i)) mapkeys)))
-
-(defn merge-maps-by-keys
-  "Merge two lists of hash-maps, joining the list members by the key values
-   specified in the mapkeys argument"
-  [maplist1 maplist2 mapkeys]
-  (let [conc_lists (concat maplist1 maplist2)
-        grouped_lists (group-by (variable-juxt mapkeys) conc_lists)]
-    (map #(merge (first %) (last %)) (vals grouped_lists))))
-
 (defn data
   "Returns a flat list of product values from JSON of a chips worth of CCDC results"
   [segments_json predictions_json product_type queryday]
   (let [; merge segments and predictions by px, py, cx, cy, sday and eday
-        segments_predictions (merge-maps-by-keys segments_json predictions_json ["px" "py" "cx" "cy" "sday" "eday"])
+        segments_predictions (util/merge-maps-by-keys segments_json predictions_json ["px" "py" "cx" "cy" "sday" "eday"])
         ; group segments by pixel coordinates
         pixel_segments (util/coll-groups segments_predictions ["px" "py"])
         ; map the products function across the pixel segments. Returns a flat

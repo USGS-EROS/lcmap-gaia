@@ -13,6 +13,9 @@
 
 (def segments (file/read-json "resources/cx-2115585_cy3119805_segment.json"))
 (def predictions (file/read-json "resources/cx-2115585_cy3119805_prediction.json"))
+(def pixel_segments (-> (util/merge-maps-by-keys segments predictions ["px" "py" "cx" "cy" "sday" "eday"]) (util/coll-groups ["px" "py"])))
+(def first_pixel_map (first (first pixel_segments)))
+(def first_pixel_models (last (first pixel_segments)))
 
 (deftest time-of-change-single-model-test
   (let [result (products/time-of-change (first pixel_models) querydate 100 -100)]
@@ -69,29 +72,6 @@
 ;;   (let [values (products/data chip_data chip_data "time-since-change" querydate)] 
 ;;     (is (= (count values) 10000))))
 
-(deftest ismap?-affirmative-test
-  (is (products/ismap? {:a "map"})))
-
-(deftest ismap?-negative-test
-  (is (not (products/ismap? :not_a_map))))
-
-(deftest matching-keys-return-collection-test
-  (let [map_a {:foo true :bar false}
-        map_b {:foo false :bar true}
-        expected_return [map_a map_b]]
-    (is (= (products/matching-keys map_a map_b :foo :bar true) expected_return))))
-
-(deftest matching-keys-return-first-map-test
-  (let [map_a {:foo true :bar false}
-        map_b {:foo false :bar true}
-        map_coll [map_a]]
-    (is (= (products/matching-keys map_coll map_b :foo :bar true) map_coll))))
-
-(deftest matching-keys-return-last-map-test
-  (let [map_a {:foo true :bar false}
-        map_b {:foo false :bar true}]
-    (is (= (products/matching-keys map_a map_b :foo :bar false) map_b))))
-
 (deftest falls_between_eday_sday-coll-test
   (let [map_a {:follows_eday true :precedes_sday false}
         map_b {:precedes_sday true :follows_eday false}
@@ -121,3 +101,15 @@
         map_b {:precedes_sday true :follows_bday false}
         expected [map_a map_b]]
     (is (= (products/falls-between-bday-sday map_a map_b) expected))))
+
+(deftest model_class_test
+  (let [model (first first_pixel_models)
+        query_ord (-> "1996-07-01" (util/to-ordinal))
+        model_rank_0 (products/model-class model query_ord 0)
+        model_rank_1 (products/model-class model query_ord 1)]
+    (print model_rank_0)
+    (is (= 0 (:value model_rank_0)))
+    (is (false? (:intersects model_rank_0)))
+    (is (= 5 (:value model_rank_1)))
+    (is (:precedes_sday model_rank_0))))
+

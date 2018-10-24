@@ -24,7 +24,8 @@
             (or (try-read (:lc-water   environ/env)) 5)
             (or (try-read (:lc-wetland environ/env)) 6)
             (or (try-read (:lc-snow    environ/env)) 7)
-            (or (try-read (:lc-barren  environ/env)) 8)]
+            (or (try-read (:lc-barren  environ/env)) 8)
+            (or (try-read (:lc-none    environ/env)) 0)]
    :lc_defaults (hash-map :lc_inbtw     (or (try-read (:lc-inbetween    environ/env)) 9)   ; default value for between models
                           :lc_insuff    (or (try-read (:lc-insufficient environ/env)) 10)  ; insufficient data, such as at the end of a time series
                           :lcc_growth   (or (try-read (:lc-growth       environ/env)) 151)

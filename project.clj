@@ -9,8 +9,10 @@
                  [org.clojure/tools.logging "0.4.0"]
                  [cheshire                  "5.8.0"]
                  [clojure.java-time         "0.3.2"]
-                 [compojure                 "1.6.0"]
-                 [com.cemerick/pomegranate  "1.0.0"]                
+                 [compojure                 "1.6.1"]
+                 [com.cemerick/pomegranate  "1.0.0" :exclusions [[org.slf4j/jcl-over-slf4j]
+                                                                 [org.apache.httpcomponents/httpcore]
+                                                                 [org.slf4j/slf4j-api]]]
                  [environ                   "1.1.0"]
                  [http-kit                  "2.2.0"]
                  [http-kit.fake             "0.2.1"]
@@ -21,7 +23,8 @@
                  [ring/ring-mock            "0.3.2"]]
 
   :plugins [[lein-environ "1.1.0"]]
-  :profiles {:test    {:resource-paths ["test" "test/resources"]}
+  :profiles {:dev     {:dependencies [[org.clojure/test.check "0.9.0"]]}
+             :test    {:resource-paths ["test" "test/resources"] :dependencies [[org.clojure/test.check "0.9.0"]]}
              :uberjar {:omit-source true
                        :aot :all}}
   :main lcmap.gaia.main)
