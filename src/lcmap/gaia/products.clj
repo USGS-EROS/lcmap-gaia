@@ -213,10 +213,11 @@
   [segments_probabilities query_day rank]
   (let [query_ordinal (util/to-ordinal query_day)
         sorted_segments (sort-by-key (:segments segments_probabilities) "sday")
-        characterized_segments (map #(characterize_segment % query_ordinal) sorted_segments)
+        probabilities   (:probabilities segments_probabilities)
+        characterized_segments (map #(characterize_segment % query_ordinal probabilities rank) sorted_segments)
         first_start_day   (-> (first sorted_segments) (get "sday") (util/to-ordinal))
         last_end_day      (-> (last sorted_segments)  (get "eday") (util/to-ordinal))
-        intersected_segment (first (filter :intersects characterized_segments)) ;(first (filter intersect_fn sorted_segments)) 
+        intersected_segment (first (filter :intersects characterized_segments))
         eday_bday_model   (first (filter :btw_eday_bday characterized_segments))
         between_eday_sday (reduce falls-between-eday-sday characterized_segments)
         between_bday_sday (reduce falls-between-bday-sday characterized_segments)]
@@ -270,48 +271,50 @@
     (hash-map :pixelx (:px pixel_coords) :pixely (:py pixel_coords) :val value)))
 
 
-;; (defn confidence
-;;   [models query_day rank]
-;;   (let [sorted_models     (sort-by-key models "sday")
-;;         query_ord         (-> query_day (util/to-ordinal))
-;;         first_start_day   (-> (first sorted_models) (get "sday") (util/to-ordinal))
-;;         last_end_day      (-> (last sorted_models)  (get "eday") (util/to-ordinal))
+(defn confidence
+  [segments_probabilities query_day rank]
+  (let [query_ordinal     (-> query_day (util/to-ordinal))
+        sorted_segments (sort-by-key (:segments segments_probabilities) "sday")
+        probabilities   (:probabilities segments_probabilities)
+        characterized_segments (map #(characterize_segment % query_ordinal probabilities rank) sorted_segments)
+        first_start_day   (-> (first sorted_segments) (get "sday") (util/to-ordinal))
+        last_end_day      (-> (last sorted_segments)  (get "eday") (util/to-ordinal))
 
-;;         model_classes     (map #(model-class % query_ord rank) sorted_models)
+        ;; model_classes     (map #(model-class % query_ord rank) sorted_models)
 
-;;         intercepted_model (first (filter :intersects model_classes))
-;;         eday_bday_model   (first (filter :btw_eday_bday model_classes))
-;;         between_eday_sday (reduce falls-between-eday-sday model_classes)
-;;         between_bday_sday (reduce falls-between-bday-sday model_classes)]
+        ;; intercepted_model (first (filter :intersects model_classes))
+        ;; eday_bday_model   (first (filter :btw_eday_bday model_classes))
+        ;; between_eday_sday (reduce falls-between-eday-sday model_classes)
+        ;; between_bday_sday (reduce falls-between-bday-sday model_classes)
+        ]
 
-;;     (cond
-;;       ; query date preceds first segment start date
-;;       (= true (< query_ord first_start_day))
-;;         (:lcc_back (:lc_defaults config)) ; return lcc_back value from lc_defaults config
+    (cond
+      ; query date preceds first segment start date
+      (= true (< query_ord first_start_day))
+        (:lcc_back (:lc_defaults config)) ; return lcc_back value from lc_defaults config
 
-;;       ; query date follows last segment end date and change prob == 1
-;;       (= true (> query_ord last_end_day) (= 1 (int (get (last sorted_models) "chprob"))))
-;;         (:lcc_afterbr (:lc_defaults config)) ; return the lcc_afterbr value from the lc_defaults config
+      ; query date follows last segment end date and change prob == 1
+      (= true (> query_ord last_end_day) (= 1 (int (get (last sorted_segments) "chprob"))))
+        (:lcc_afterbr (:lc_defaults config)) ; return the lcc_afterbr value from the lc_defaults config
+
+      ; query date follows last segment end date
+      (= true (> query_ord last_end_day))
+        (:lcc_forwards (:lc_defaults config)) ; return the lcc_forwards value from the lc_defaults config
 
 
-;;       ; query date follows last segment end date
-;;       (= true (> query_ord last_end_day))
-;;         (:lcc_forwards (:lc_defaults config)) ; return the lcc_forwards value from the lc_defaults config
+      )))
 
+(defn primary-landcover-confidence
+  "Return the landcover probability for the highest landcover class value"
+  [pixel_coords segments_probabilities query_day]
+  (let [value (confidence pixel_models query_day 0)]
+    (hash-map :pixelx (:px pixel_map) :pixely (:py pixel_map) :val value)))
 
-;;       )))
-
-;; (defn primary-landcover-confidence
-;;   "Return the landcover probability for the highest landcover class value"
-;;   [pixel_map pixel_models query_day]
-;;   (let [value (confidence pixel_models query_day 0)]
-;;     (hash-map :pixelx (:px pixel_map) :pixely (:py pixel_map) :val value)))
-
-;; (defn secondary-landcover-confidence
-;;   "Return the landcover probability for the 2nd highest landcover class value"
-;;   [pixel_map pixel_models query_day]
-;;   (let [value (confidence pixel_models query_day 1)]
-;;     (hash-map :pixelx (:px pixel_map) :pixely (:py pixel_map) :val value)))
+(defn secondary-landcover-confidence
+  "Return the landcover probability for the 2nd highest landcover class value"
+  [pixel_coords segments_probabilities query_day]
+  (let [value (confidence pixel_models query_day 1)]
+    (hash-map :pixelx (:px pixel_map) :pixely (:py pixel_map) :val value)))
 
 (defn ccdc_map
   "Return hash-map keyed by pixelx and pixely with a hash-map value for :segments and :predictions"
