@@ -87,17 +87,18 @@
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
 (defn falls-between-eday-sday
+  "Convenience function for returning pair of maps with true values for :follows_eday and :precedes_sday keys.
+   Used with Reduce to identify maps in a list of sorted maps"
   [map_a map_b]
   (util/matching-keys map_a map_b :follows_eday :precedes_sday true))
 
 (defn falls-between-bday-sday
+  "Convenience function for returning pair of maps with true values for :follows_bday and :precedes_sday keys.
+   Used with Reduce to identify maps in a list of sorted maps"
   [map_a map_b]
   (util/matching-keys map_a map_b :follows_bday :precedes_sday true))
 
-(def int_index [7 15 23 31 39 47 55])
-(def slope_index [0 8 16 24 32 40 48])
-
-(defn nbrdiff
+(defn nbr
   [model]
   (let [sday   (get model "sday")
         eday   (get model "eday")
@@ -114,17 +115,21 @@
     (- nbr_end nbr_start)))
 
 (defn get-class
+  "Returns the class value given a collection of probabilities"
   [probs]
   (let [sorted (reverse (sort probs)) 
         position (.indexOf probs (nth sorted 0))]
     (nth (:lc_map config) position)))
 
 (defn first-date-of-class
+  "Returns the 'date' value from a collection of predictions for the first occurence of a given classification"
   [sorted_predictions class_val]
   (let [matching_predictions (filter (fn [i] (= class_val (get-class (get i "probs")))) sorted_predictions)]
     (get (first matching_predictions) "date")))
 
-(defn mean [coll]
+(defn mean 
+  "Returns the mathematical mean value for a collection of numbers"
+  [coll]
   (let [sum (apply + coll)
         count (count coll)]
     (if (pos? count)
@@ -132,6 +137,7 @@
       0)))
 
 (defn mean-probabilities
+  "Returns a 1-d collection of mean probabilities given a collection of probabilities "
   [probabilities]
   (let [predictions (apply #(get % "probs") probabilities)]
     [(mean (map #(nth % 0) predictions))
@@ -145,8 +151,9 @@
      (mean (map #(nth % 8) predictions))]))
 
 (defn classify
+  "Return the classification value for a single segment given a query_day and rank"
   [model query_day rank]
-  (let [nbr_slope (nbrdiff model)
+  (let [nbrdiff (nbr model)
         sorted_predictions (util/sort-by-key (:probabilities model) "date")
         first_class (-> sorted_predictions (first) (get-class))
         last_class  (-> sorted_predictions (last) (get-class))
@@ -158,37 +165,33 @@
 
     (cond
       ; nbr_slope > 0.05 and first_class is 'grass' and last is 'forest'
-      ; everything after the first 'forest' class is now forest, and everything before is grass
-      ; need to determine first_forest_date. if query_day is >= first_forest_date, return forest, else grass
-      (= true (> nbr_slope 0.05) (= grass_val first_class) (= tree_val last_class))
+      (= true (> nbrdiff 0.05) (= grass_val first_class) (= tree_val last_class))
         (if (>= query_day first_forest_date)
           (nth [tree_val grass_val] rank)
           (nth [grass_val tree_val] rank))
 
       ; nbr_slope < -0.05 and last class is grass and first class is forest
-      ; everything after the first 'grass' class is now grass, everything before is forest
-      ; need to determine first_grass_date. if query_day is >= first_grass_date, return grass, else forest
-      (= true (< nbr_slope -0.05) (= tree_val first_class) (= grass_val last_class))
+      (= true (< nbrdiff -0.05) (= tree_val first_class) (= grass_val last_class))
         (if (>= query_day first_grass_date)
           (nth [grass_val tree_val] rank)
           (nth [tree_val grass_val] rank))
-      :else
-      ; calculate the mean across all probabilities for the segment, classify based on highest probability
+      :else ; calculate the mean across all probabilities for the segment, classify based on highest probability
         (get-class mean_probabilities))))
 
 (defn characterize_segment
+  "Return a hash-map characterizing details of the segment"
   [segment query_day probabilities rank]
   (let [sday (-> (get segment "sday") (util/to-ordinal)) 
         eday (-> (get segment "eday") (util/to-ordinal))
         bday (-> (get segment "bday") (util/to-ordinal))
-        nbr  (nbrdiff segment)
+        nbrdiff (nbr segment)
         intersects        (<= sday query_day eday)
         precedes_sday     (< query_day sday)
         follows_eday      (> query_day eday)
         follows_bday      (>= query_day bday)
         between_eday_bday (>= eday query_day bday)
-        growth  (> nbr 0.05)
-        decline (< nbr -0.05)
+        growth  (> nbrdiff 0.05)
+        decline (< nbrdiff -0.05)
         segment_probabilities (filter (fn [i] (= (get i "sday") sday)) probabilities)
         sorted_probabilities  (util/sort-by-key segment_probabilities "date")
         classification (classify (merge segment {:probabilities sorted_probabilities}) query_day rank)]
@@ -206,6 +209,7 @@
               :classification classification)))
 
 (defn landcover
+  "Return the landcover value given the segments, probabilities, query_day and rank for a location"
   [segments_probabilities query_day rank]
   (let [query_ordinal (util/to-ordinal query_day)
         sorted_segments (util/sort-by-key (:segments segments_probabilities) "sday")
@@ -275,6 +279,7 @@
       (int _prob))))
 
 (defn confidence
+  "Return the landcover confidence value given the segments, probabilities, query_day and rank for a location"
   [segments_probabilities query_day rank]
   (let [query_ord       (-> query_day (util/to-ordinal))
         sorted_segments (util/sort-by-key (:segments segments_probabilities) "sday")
