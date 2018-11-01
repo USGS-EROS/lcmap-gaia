@@ -7,13 +7,6 @@
             [lcmap.gaia.util       :as util]
             [lcmap.gaia.config     :refer [config]]))
 
-(defn product-name
-  [model product fmt]
-  (let [chipx (get model "cx")
-        chipy (get model "cy")
-        name  (string/join "_" [product chipx chipy])]
-    (str name "." fmt)))
-
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;;;;;;;;;;;;;;;    CHANGE PRODUCTS    ;;;;;;;;;;;;;;;;;
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
