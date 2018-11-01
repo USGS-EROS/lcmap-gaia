@@ -7,10 +7,6 @@
             [lcmap.gaia.util       :as util]
             [lcmap.gaia.config     :refer [config]]))
 
-(defn sort-by-sday [models] (sort-by (fn [i] (get i "sday")) models))
-(defn sort-by-key [coll key] (sort-by (fn [i] (get i key)) coll))
-
-
 (defn product-name
   [model product fmt]
   (let [chipx (get model "cx")
@@ -158,7 +154,7 @@
 (defn classify
   [model query_day rank]
   (let [nbr_slope (nbrdiff model)
-        sorted_predictions (sort-by-key (:probabilities model) "date")
+        sorted_predictions (util/sort-by-key (:probabilities model) "date")
         first_class (-> sorted_predictions (first) (get-class))
         last_class  (-> sorted_predictions (last) (get-class))
         first_forest_date (first-date-of-class sorted_predictions (:lc-tree  (:lc_map config)))
@@ -201,7 +197,7 @@
         growth  (> nbr 0.05)
         decline (< nbr -0.05)
         segment_probabilities (filter (fn [i] (= (get i "sday") sday)) probabilities)
-        sorted_probabilities  (sort-by-key segment_probabilities "date")
+        sorted_probabilities  (util/sort-by-key segment_probabilities "date")
         classification (classify (merge segment {:probabilities sorted_probabilities}) query_day rank)]
     (hash-map :intersects     intersects
               :precedes_sday  precedes_sday
@@ -219,7 +215,7 @@
 (defn landcover
   [segments_probabilities query_day rank]
   (let [query_ordinal (util/to-ordinal query_day)
-        sorted_segments (sort-by-key (:segments segments_probabilities) "sday")
+        sorted_segments (util/sort-by-key (:segments segments_probabilities) "sday")
         probabilities   (:probabilities segments_probabilities)
         characterized_segments (map #(characterize_segment % query_ordinal probabilities rank) sorted_segments)
         first_start_day   (-> (first sorted_segments) (get "sday") (util/to-ordinal))
@@ -288,7 +284,7 @@
 (defn confidence
   [segments_probabilities query_day rank]
   (let [query_ord       (-> query_day (util/to-ordinal))
-        sorted_segments (sort-by-key (:segments segments_probabilities) "sday")
+        sorted_segments (util/sort-by-key (:segments segments_probabilities) "sday")
         probabilities   (:probabilities segments_probabilities)
         characterized_segments (map #(characterize_segment % query_ord probabilities rank) sorted_segments)
         first_start_day   (-> (first sorted_segments) (get "sday") (util/to-ordinal))

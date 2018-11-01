@@ -97,3 +97,8 @@
           (do [map_a map_b])
           (do map_b))       
       (do map_a)))
+
+(defn sort-by-key [coll key] (sort-by (fn [i] (get i key)) coll))
+
+
+
