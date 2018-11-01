@@ -192,7 +192,7 @@
   (let [sday (-> (get segment "sday") (util/to-ordinal)) 
         eday (-> (get segment "eday") (util/to-ordinal))
         bday (-> (get segment "bday") (util/to-ordinal))
-        nbr  (nbr_diff segment)
+        nbr  (nbrdiff segment)
         intersects        (<= sday query_day eday)
         precedes_sday     (< query_day sday)
         follows_eday      (> query_day eday)
@@ -287,10 +287,10 @@
 
 (defn confidence
   [segments_probabilities query_day rank]
-  (let [query_ordinal     (-> query_day (util/to-ordinal))
+  (let [query_ord       (-> query_day (util/to-ordinal))
         sorted_segments (sort-by-key (:segments segments_probabilities) "sday")
         probabilities   (:probabilities segments_probabilities)
-        characterized_segments (map #(characterize_segment % query_ordinal probabilities rank) sorted_segments)
+        characterized_segments (map #(characterize_segment % query_ord probabilities rank) sorted_segments)
         first_start_day   (-> (first sorted_segments) (get "sday") (util/to-ordinal))
         last_end_day      (-> (last sorted_segments)  (get "eday") (util/to-ordinal))
         intersected_segment (first (filter :intersects characterized_segments))
@@ -337,14 +337,14 @@
 (defn primary-landcover-confidence
   "Return the landcover probability for the highest landcover class value"
   [pixel_coords segments_probabilities query_day]
-  (let [value (confidence pixel_models query_day 0)]
-    (hash-map :pixelx (:px pixel_map) :pixely (:py pixel_map) :val value)))
+  (let [value (confidence segments_probabilities query_day 0)]
+    (hash-map :pixelx (:px pixel_coords) :pixely (:py pixel_coords) :val value)))
 
 (defn secondary-landcover-confidence
   "Return the landcover probability for the 2nd highest landcover class value"
   [pixel_coords segments_probabilities query_day]
-  (let [value (confidence pixel_models query_day 1)]
-    (hash-map :pixelx (:px pixel_map) :pixely (:py pixel_map) :val value)))
+  (let [value (confidence segments_probabilities query_day 1)]
+    (hash-map :pixelx (:px pixel_coords) :pixely (:py pixel_coords) :val value)))
 
 (defn ccdc_map
   "Return hash-map keyed by pixelx and pixely with a hash-map value for :segments and :predictions"
@@ -363,7 +363,7 @@
         grouped_predictions (group-by (util/variable-juxt ["px" "py"]) predictions_json)
         pixel_map (map #(ccdc_map {:pixelxy % :segments grouped_segments :predictions grouped_predictions}) (keys grouped_segments))
         product_fn (-> (str "lcmap.gaia.products/" product_type) (symbol) (resolve))
-        pixel_array (map #(product_fn (first %) (last %) queryday) pixel_map)
+        pixel_array (map #(product_fn (-> % (keys) (first)) (-> % (vals) (first)) queryday) pixel_map)
         ; group product coll by row
         ; [{:pixely 3159045} [{:pixely 3159045, :pixelx -2114775, :val 6290},...] ...]
         row_groups (util/coll-groups pixel_array [:pixely]) 
