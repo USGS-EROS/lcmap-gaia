@@ -192,13 +192,17 @@
   (let [sday (-> (get segment "sday") (util/to-ordinal)) 
         eday (-> (get segment "eday") (util/to-ordinal))
         bday (-> (get segment "bday") (util/to-ordinal))
+        nbr  (nbr_diff segment)
         intersects        (<= sday query_day eday)
         precedes_sday     (< query_day sday)
         follows_eday      (> query_day eday)
         follows_bday      (>= query_day bday)
         between_eday_bday (>= eday query_day bday)
+        growth  (> nbr 0.05)
+        decline (< nbr -0.05)
         segment_probabilities (filter (fn [i] (= (get i "sday") sday)) probabilities)
-        classification (classify (merge segment {:probabilities segment_probabilities}) query_day rank)]
+        sorted_probabilities  (sort-by-key segment_probabilities "date")
+        classification (classify (merge segment {:probabilities sorted_probabilities}) query_day rank)]
     (hash-map :intersects     intersects
               :precedes_sday  precedes_sday
               :follows_eday   follows_eday
@@ -207,6 +211,9 @@
               :sday           sday
               :eday           eday
               :bday           bday
+              :growth         growth
+              :decline        decline
+              :probabilities  sorted_probabilities
               :classification classification)))
 
 (defn landcover
@@ -270,6 +277,13 @@
   (let [value (landcover segments_probabilities query_day 1)]
     (hash-map :pixelx (:px pixel_coords) :pixely (:py pixel_coords) :val value)))
 
+(defn scale-probability
+  "Return scaling of probability into integer, with a min value of 1"
+  [probability]
+  (let [_prob (* probability 100)]
+    (if (< _prob 1)
+      1
+      (int _prob))))
 
 (defn confidence
   [segments_probabilities query_day rank]
@@ -279,14 +293,10 @@
         characterized_segments (map #(characterize_segment % query_ordinal probabilities rank) sorted_segments)
         first_start_day   (-> (first sorted_segments) (get "sday") (util/to-ordinal))
         last_end_day      (-> (last sorted_segments)  (get "eday") (util/to-ordinal))
-
-        ;; model_classes     (map #(model-class % query_ord rank) sorted_models)
-
-        ;; intercepted_model (first (filter :intersects model_classes))
-        ;; eday_bday_model   (first (filter :btw_eday_bday model_classes))
-        ;; between_eday_sday (reduce falls-between-eday-sday model_classes)
-        ;; between_bday_sday (reduce falls-between-bday-sday model_classes)
-        ]
+        intersected_segment (first (filter :intersects characterized_segments))
+        eday_bday_model   (first (filter :btw_eday_bday characterized_segments))
+        between_eday_sday (reduce falls-between-eday-sday characterized_segments)
+        between_bday_sday (reduce falls-between-bday-sday characterized_segments)]
 
     (cond
       ; query date preceds first segment start date
@@ -301,8 +311,28 @@
       (= true (> query_ord last_end_day))
         (:lcc_forwards (:lc_defaults config)) ; return the lcc_forwards value from the lc_defaults config
 
+      ; query date falls between a segments start date and end date and growth is true
+      (= true (not (nil? intersected_segment)) (:growth intersected_segment))
+        (:lcc_growth (:lc_defaults config)) ; return lcc_growth value from lc_defaults config
 
-      )))
+      ; query date falls between a segments start date and end date and decline is true
+      (= true (not (nil? intersected_segment)) (:decline intersected_segment))
+        (:lcc_decline (:lc_defaults config)) ; return lcc_decline value from lc_defaults config
+
+      ; query date falls between a segments start date and end date
+      (not (nil? intersected_segment))
+        (scale-probability (nth (last (:probabilities intersected_segment)) rank))  
+
+      ; query date falls between segments of same landcover classification
+      (= true (= (:classification (first between_eday_sday)) (:classification (last between_eday_sday))))
+        (:lcc_samelc (:lc_defaults config)) ; return lcc_samelc from lc_defaults config
+
+      ; query date falls between segments with different landcover classifications
+      (= 2 (count between_eday_sday))
+        (:lcc_difflc (:lc_defaults config)) ; return lcc_difflc from lc_defaults config
+
+      :else ; mapify returns ValueError
+        (last (:lc_map config)))))
 
 (defn primary-landcover-confidence
   "Return the landcover probability for the highest landcover class value"
