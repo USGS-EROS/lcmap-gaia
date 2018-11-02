@@ -10,6 +10,11 @@
 (def first_segments_predictions (first (vals first_pixel))) 
 (def response_set (set [:pixelx :pixely :val]))
 
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+;;;;;;;;;;;;;;;    CHANGE PRODUCT TESTS    ;;;;;;;;;;;;;;;;;
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+
+
 (deftest time-of-change-single-model-test
   (let [result (products/time-of-change (first (:segments first_segments_predictions))  tr/querydate 100 -100)]
     (is (= (set (keys result))  response_set))))
@@ -60,10 +65,9 @@
     (is (= (count gt_zero) 9989))
     (is (= (count results) 10000))))
 
-;; (deftest data-test
-;;   ;; FIXME !!
-;;   (let [values (products/data chip_data chip_data "time-since-change" querydate)] 
-;;     (is (= (count values) 10000))))
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+;;;;;;;;;;;;;;;    CLASSIFICATION PRODUCT TESTS    ;;;;;;;;;;;;;;;
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
 (deftest falls_between_eday_sday-coll-test
   (let [map_a {:follows_eday true :precedes_sday false}
@@ -95,14 +99,35 @@
         expected [map_a map_b]]
     (is (= (products/falls-between-bday-sday map_a map_b) expected))))
 
-;; (deftest model_class_test
-;;   (let [model (first first_pixel_models)
-;;         query_ord (-> "1996-07-01" (util/to-ordinal))
-;;         model_rank_0 (products/model-class model query_ord 0)
-;;         model_rank_1 (products/model-class model query_ord 1)]
-;;     (print model_rank_0)
-;;     (is (= 0 (:value model_rank_0)))
-;;     (is (false? (:intersects model_rank_0)))
-;;     (is (= 5 (:value model_rank_1)))
-;;     (is (:precedes_sday model_rank_0))))
+(deftest nbr_test
+  (let [first_nbr (products/nbr tr/first_segment)
+        last_nbr  (products/nbr tr/last_segment)]
+    (is (> first_nbr 0.12))
+    (is (< first_nbr 0.14))
+    (is (> last_nbr  0.023))
+    (is (< last_nbr  0.024))))
+
+(deftest get_class_test
+  (let [first_class (products/get-class tr/first_probs)
+        last_class  (products/get-class tr/last_probs)]
+    (is (= first_class 7))
+    (is (= last_class 2))))
+
+(deftest first_date_of_class_test
+  (let [sorted_predictions (util/sort-by-key tr/first_grouped_predictions "date")]
+    (is (= "1995-07-01" (products/first-date-of-class sorted_predictions 7)))
+    (is (= "2012-07-01" (products/first-date-of-class sorted_predictions 5)))
+    (is (= nil (products/first-date-of-class sorted_predictions 4)))))
+
+(deftest mean_test
+  (let [coll [4 2 6 88 7]]
+    (is (= 21.4 (products/mean coll)))))
+
+(deftest mean_probabilities_test
+  (let [preds [{"prob" [0 1 2 3 4 5 6 7 8]} {"prob" [7 8 9 5 8 7 6 5 5]}]]
+    (is (= [3.5 4.5 5.5 4.0 6.0 6.0 6.0 6.0 6.5]
+           (products/mean-probabilities preds)))))
+
+
+
 

@@ -99,9 +99,10 @@
   (util/matching-keys map_a map_b :follows_bday :precedes_sday true))
 
 (defn nbr
+  "Return the Normalized Burn Ration for a segment"
   [model]
-  (let [sday   (get model "sday")
-        eday   (get model "eday")
+  (let [sday   (-> (get model "sday") (util/to-ordinal)) 
+        eday   (-> (get model "eday") (util/to-ordinal)) 
         niint  (get model "niint")
         s1int  (get model "s1int")
         nicoef (first (get model "nicoef"))
@@ -124,8 +125,9 @@
 (defn first-date-of-class
   "Returns the 'date' value from a collection of predictions for the first occurence of a given classification"
   [sorted_predictions class_val]
-  (let [matching_predictions (filter (fn [i] (= class_val (get-class (get i "probs")))) sorted_predictions)]
-    (get (first matching_predictions) "date")))
+  (let [matching_predictions (filter (fn [i] (= class_val (get-class (get i "prob")))) sorted_predictions)]
+      (get (first matching_predictions) "date")
+    ))
 
 (defn mean 
   "Returns the mathematical mean value for a collection of numbers"
@@ -133,22 +135,23 @@
   (let [sum (apply + coll)
         count (count coll)]
     (if (pos? count)
-      (/ sum count)
+      (float (/ sum count)) 
       0)))
 
 (defn mean-probabilities
   "Returns a 1-d collection of mean probabilities given a collection of probabilities "
-  [probabilities]
-  (let [predictions (apply #(get % "probs") probabilities)]
-    [(mean (map #(nth % 0) predictions))
-     (mean (map #(nth % 1) predictions))
-     (mean (map #(nth % 2) predictions))
-     (mean (map #(nth % 3) predictions))
-     (mean (map #(nth % 4) predictions))
-     (mean (map #(nth % 5) predictions))
-     (mean (map #(nth % 6) predictions))
-     (mean (map #(nth % 7) predictions))
-     (mean (map #(nth % 8) predictions))]))
+  ; do this better
+  [predictions]
+  (let [probabilities (map #(get % "prob") predictions)]
+    [(mean (map #(nth % 0) probabilities))
+     (mean (map #(nth % 1) probabilities))
+     (mean (map #(nth % 2) probabilities))
+     (mean (map #(nth % 3) probabilities))
+     (mean (map #(nth % 4) probabilities))
+     (mean (map #(nth % 5) probabilities))
+     (mean (map #(nth % 6) probabilities))
+     (mean (map #(nth % 7) probabilities))
+     (mean (map #(nth % 8) probabilities))]))
 
 (defn classify
   "Return the classification value for a single segment given a query_day and rank"
