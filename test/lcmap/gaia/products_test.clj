@@ -121,13 +121,21 @@
 
 (deftest mean_test
   (let [coll [4 2 6 88 7]]
-    (is (= 21.4 (products/mean coll)))))
+    (is (= (float 21.4) (products/mean coll)))))
 
 (deftest mean_probabilities_test
   (let [preds [{"prob" [0 1 2 3 4 5 6 7 8]} {"prob" [7 8 9 5 8 7 6 5 5]}]]
     (is (= [3.5 4.5 5.5 4.0 6.0 6.0 6.0 6.0 6.5]
            (products/mean-probabilities preds)))))
 
+(deftest classify_positive_nbr_test
+  (is true))
+
+(deftest classify_negative_nbr_test
+  (is true))
+
+(deftest classify_else_test
+  (is true))
 
 
 
