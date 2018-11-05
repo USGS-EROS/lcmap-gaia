@@ -114,7 +114,7 @@
     (is (= last_class 2))))
 
 (deftest first_date_of_class_test
-  (let [sorted_predictions (util/sort-by-key tr/first_grouped_predictions "date")]
+  (let [sorted_predictions (util/sort-by-key tr/first_grouped_predictions :date)]
     (is (= "1995-07-01" (products/first-date-of-class sorted_predictions 7)))
     (is (= "2012-07-01" (products/first-date-of-class sorted_predictions 5)))
     (is (= nil (products/first-date-of-class sorted_predictions 4)))))
@@ -124,7 +124,7 @@
     (is (= (float 21.4) (products/mean coll)))))
 
 (deftest mean_probabilities_test
-  (let [preds [{"prob" [0 1 2 3 4 5 6 7 8]} {"prob" [7 8 9 5 8 7 6 5 5]}]]
+  (let [preds [{:prob [0 1 2 3 4 5 6 7 8]} {:prob [7 8 9 5 8 7 6 5 5]}]]
     (is (= [3.5 4.5 5.5 4.0 6.0 6.0 6.0 6.0 6.5]
            (products/mean-probabilities preds)))))
 
