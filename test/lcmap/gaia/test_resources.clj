@@ -12,6 +12,7 @@
     (hash-map {:px pixelx :py pixely} (hash-map :segments segments :predictions predictions))))
 
 (def querydate "2006-07-01")
+(def query_ord (util/to-ordinal querydate))
 (def segments    (file/read-json "resources/cx-2115585_cy3119805_segment.json"))
 (def predictions (file/read-json "resources/cx-2115585_cy3119805_prediction_with_fake_date.json"))
 (def grouped_segments    (-> ["px" "py"] (util/variable-juxt) (group-by segments) (keywordize-keys)))

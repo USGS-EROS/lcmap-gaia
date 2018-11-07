@@ -17,7 +17,7 @@
   ([model query-day x y]
    (let [change-prob (:chprob model)
          break-day   (-> model (:bday) (util/to-ordinal)) 
-         query-year  (-> query-day (util/to-javatime) (util/javatime-year))
+         query-year  (-> query-day (util/ordinal-to-javatime) (util/javatime-year))
          break-year  (-> break-day (util/ordinal-to-javatime) (util/javatime-year))
          response    #(hash-map :pixelx x :pixely y :val %)]
      (if (= true (= query-year break-year) (= 1.0 change-prob))
@@ -32,8 +32,7 @@
   ([model query-day x y]
    (let [change-prob (:chprob model)
          break-day   (-> model (:bday) (util/to-ordinal)) 
-         query-ord   (-> query-day (util/to-ordinal))
-         distance    (if (= 1.0 change-prob) (- query-ord break-day) 0)] ; can't use nil, dont think 0 is appropriate
+         distance    (if (= 1.0 change-prob) (- query-day break-day) 0)] ; can't use nil, dont think 0 is appropriate
      (hash-map :pixelx x :pixely y :val distance)))
   ([pixel_map pixel_models query-day]
    (let [values (map #(time-since-change % query-day (:px pixel_map) (:py pixel_map)) (:segments pixel_models))]
@@ -43,9 +42,8 @@
   "Return severity of spectral shift"
   ([model query-day x y]
    (let [change-prob (:chprob model)
-         break-day   (-> model (:bday) (util/to-ordinal)) 
-         query-year  (-> query-day (util/to-javatime) (util/javatime-year))
-         break-year  (-> break-day (util/ordinal-to-javatime) (util/javatime-year))
+         query-year  (-> query-day (util/ordinal-to-javatime) (util/javatime-year))
+         break-year  (-> (:bday model) (util/to-javatime) (util/javatime-year))
          magnitudes  [(:grmag model) (:remag model) (:nimag model) (:s1mag model) (:s2mag model)]
          euc-norm    (math/sqrt (reduce + (map #(math/expt % 2) magnitudes)))
          response    #(hash-map :pixelx x :pixely y :val %)]
@@ -59,10 +57,9 @@
 (defn length-of-segment
   "Return length of change segment in days"
   ([model query-day x y]
-   (let [query-ord (-> query-day (util/to-ordinal))
-         start-day (-> model (:sday) (util/to-ordinal))
+   (let [start-day (-> model (:sday) (util/to-ordinal))
          end-day   (-> model (:eday) (util/to-ordinal))
-         startends [(- query-ord start-day) (- query-ord end-day)]
+         startends [(- query-day start-day) (- query-day end-day)]
          positives (filter (fn [i] (> i 0)) startends)
          minimum   (if (= 0 (count positives)) 0 (apply min positives))]
      (hash-map :pixelx x :pixely y :val minimum)))
@@ -73,11 +70,10 @@
 (defn curve-fit
   "Return Curve QA for point in time"
   ([model query-day x y]
-   (let [query-ord (-> query-day (util/to-ordinal))
-         curve-qa  (:curqa model)
+   (let [curve-qa  (:curqa model)
          start-day (-> model (:sday) (util/to-ordinal)) 
          end-day   (-> model (:eday) (util/to-ordinal)) 
-         value     (if (<= start-day query-ord end-day) curve-qa 0)]
+         value     (if (<= start-day query-day end-day) curve-qa 0)]
      (hash-map :pixelx x :pixely y :val value)))
   ([pixel_map pixel_models query-day]
    (let [values (map #(curve-fit % query-day (:px pixel_map) (:py pixel_map)) (:segments pixel_models))]
@@ -155,31 +151,35 @@
 
 (defn classify
   "Return the classification value for a single segment given a query_day and rank"
-  [model query_day rank]
-  (let [nbrdiff (nbr model)
-        sorted_predictions (util/sort-by-key (:probabilities model) :date)
-        first_class (-> sorted_predictions (first) (get-class))
-        last_class  (-> sorted_predictions (last) (get-class))
-        first_forest_date (first-date-of-class sorted_predictions (:lc-tree  (:lc_map config)))
-        first_grass_date  (first-date-of-class sorted_predictions (:lc-grass (:lc_map config)))
-        mean_probabilities (mean-probabilities sorted_predictions)
-        grass_val (:lc-grass (:lc_map config))
-        tree_val (:lc-tree (:lc_map config))]
+  ([model query_ord rank nbrdiff]
+   (let [sorted_predictions (util/sort-by-key (:probabilities model) :date)
+         first_class (-> sorted_predictions (first) (get-class))
+         last_class  (-> sorted_predictions (last) (get-class))
+         first_forest_date (-> sorted_predictions (first-date-of-class (:lc-tree (:lc_map config))) (util/to-ordinal))   
+                                        ; (first-date-of-class sorted_predictions (:lc-tree  (:lc_map config)))
+         first_grass_date (-> sorted_predictions (first-date-of-class (:lc-grass (:lc_map config))) (util/to-ordinal))    
+                                        ; (first-date-of-class sorted_predictions (:lc-grass (:lc_map config)))
+         mean_probabilities (mean-probabilities sorted_predictions)
+         grass_val (:lc-grass (:lc_map config))
+         tree_val (:lc-tree (:lc_map config))]
 
-    (cond
-      ; nbr_slope > 0.05 and first_class is 'grass' and last is 'forest'
-      (= true (> nbrdiff 0.05) (= grass_val first_class) (= tree_val last_class))
-        (if (>= query_day first_forest_date)
-          (nth [tree_val grass_val] rank)
-          (nth [grass_val tree_val] rank))
+     (cond
+       ; nbr_slope > 0.05 and first_class is 'grass' and last is 'forest'
+       (= true (> nbrdiff 0.05) (= grass_val first_class) (= tree_val last_class))
+       (if (>= query_ord first_forest_date)
+         (nth [tree_val grass_val] rank)
+         (nth [grass_val tree_val] rank))
 
-      ; nbr_slope < -0.05 and last class is grass and first class is forest
-      (= true (< nbrdiff -0.05) (= tree_val first_class) (= grass_val last_class))
-        (if (>= query_day first_grass_date)
-          (nth [grass_val tree_val] rank)
-          (nth [tree_val grass_val] rank))
-      :else ; calculate the mean across all probabilities for the segment, classify based on highest probability
-        (get-class mean_probabilities))))
+       ; nbr_slope < -0.05 and last class is grass and first class is forest
+       (= true (< nbrdiff -0.05) (= tree_val first_class) (= grass_val last_class))
+       (if (>= query_ord first_grass_date)
+         (nth [grass_val tree_val] rank)
+         (nth [tree_val grass_val] rank))
+       :else ; calculate the mean across all probabilities for the segment, classify based on highest probability
+       (get-class mean_probabilities))))
+  ([model query_ord rank]
+   (let [nbrdiff (nbr model)]
+     (classify model query_ord rank nbrdiff))))
 
 (defn characterize_segment
   "Return a hash-map characterizing details of the segment"
@@ -195,9 +195,9 @@
         between_eday_bday (>= eday query_day bday)
         growth  (> nbrdiff 0.05)
         decline (< nbrdiff -0.05)
-        segment_probabilities (filter (fn [i] (= (:sday i) sday)) probabilities)
+        segment_probabilities (filter (fn [i] (= (-> i (:sday) (util/to-ordinal)) sday)) probabilities)
         sorted_probabilities  (util/sort-by-key segment_probabilities :date)
-        classification (classify (merge segment {:probabilities sorted_probabilities}) query_day rank)]
+        classification (classify (merge segment {:probabilities sorted_probabilities}) query_day rank nbrdiff)]
     (hash-map :intersects     intersects
               :precedes_sday  precedes_sday
               :follows_eday   follows_eday
@@ -214,10 +214,9 @@
 (defn landcover
   "Return the landcover value given the segments, probabilities, query_day and rank for a location"
   [segments_probabilities query_day rank]
-  (let [query_ordinal (util/to-ordinal query_day)
-        sorted_segments (util/sort-by-key (:segments segments_probabilities) :sday)
-        probabilities   (:probabilities segments_probabilities)
-        characterized_segments (map #(characterize_segment % query_ordinal probabilities rank) sorted_segments)
+  (let [sorted_segments (util/sort-by-key (:segments segments_probabilities) :sday)
+        probabilities   (:predictions segments_probabilities)
+        characterized_segments (map #(characterize_segment % query_day probabilities rank) sorted_segments)
         first_start_day   (-> (first sorted_segments) (:sday) (util/to-ordinal))
         last_end_day      (-> (last sorted_segments)  (:eday) (util/to-ordinal))
         intersected_segment (first (filter :intersects characterized_segments))
@@ -227,19 +226,19 @@
 
     (cond
        ; query date preceds first segment start date and fill_begin config is true
-       (= true (< query_ordinal first_start_day) (:fill_begin config))
+       (= true (< query_day first_start_day) (:fill_begin config))
          (:classification (first characterized_segments)) ; return value of the first segment
 
        ; query date preceds first segment start date
-       (= true (< query_ordinal first_start_day))
+       (= true (< query_day first_start_day))
          (:lc_insuff (:lc_defaults config)) ; return lc_insuff value from lc_defaults config
 
        ; query date follows last segment end date and fill_end config is true
-       (= true (> query_ordinal last_end_day) (:fill_end config))
+       (= true (> query_day last_end_day) (:fill_end config))
          (:classification (last characterized_segments)) ; return value of the last segment
       
        ; query date follows last segment end date
-       (= true (> query_ordinal last_end_day))
+       (= true (> query_day last_end_day))
          (:lc_insuff (:lc_defaults config)) ; return the lc_insuff value from the lc_defaults config
 
        ; query date falls between a segments start date and end date
@@ -284,10 +283,9 @@
 (defn confidence
   "Return the landcover confidence value given the segments, probabilities, query_day and rank for a location"
   [segments_probabilities query_day rank]
-  (let [query_ord       (-> query_day (util/to-ordinal))
-        sorted_segments (util/sort-by-key (:segments segments_probabilities) :sday)
-        probabilities   (:probabilities segments_probabilities)
-        characterized_segments (map #(characterize_segment % query_ord probabilities rank) sorted_segments)
+  (let [sorted_segments (util/sort-by-key (:segments segments_probabilities) :sday)
+        probabilities   (:predictions segments_probabilities)
+        characterized_segments (map #(characterize_segment % query_day probabilities rank) sorted_segments)
         first_start_day   (-> (first sorted_segments) (:sday) (util/to-ordinal))
         last_end_day      (-> (last sorted_segments)  (:eday) (util/to-ordinal))
         intersected_segment (first (filter :intersects characterized_segments))
@@ -297,15 +295,15 @@
 
     (cond
       ; query date preceds first segment start date
-      (= true (< query_ord first_start_day))
+      (= true (< query_day first_start_day))
         (:lcc_back (:lc_defaults config)) ; return lcc_back value from lc_defaults config
 
       ; query date follows last segment end date and change prob == 1
-      (= true (> query_ord last_end_day) (= 1 (int (:chprob (last sorted_segments)))))
+      (= true (> query_day last_end_day) (= 1 (int (:chprob (last sorted_segments)))))
         (:lcc_afterbr (:lc_defaults config)) ; return the lcc_afterbr value from the lc_defaults config
 
       ; query date follows last segment end date
-      (= true (> query_ord last_end_day))
+      (= true (> query_day last_end_day))
         (:lcc_forwards (:lc_defaults config)) ; return the lcc_forwards value from the lc_defaults config
 
       ; query date falls between a segments start date and end date and growth is true
@@ -358,9 +356,10 @@
   (let [; merge segments and predictions by px, py, cx, cy, sday and eday
         grouped_segments    (-> ["px" "py"] (util/variable-juxt) (group-by segments_json) (keywordize-keys))
         grouped_predictions (-> ["px" "py"] (util/variable-juxt) (group-by predictions_json) (keywordize-keys))
+        query_ord (util/to-ordinal queryday)
         pixel_map (map #(ccdc_map {:pixelxy % :segments grouped_segments :predictions grouped_predictions}) (keys grouped_segments))
         product_fn (-> (str "lcmap.gaia.products/" product_type) (symbol) (resolve))
-        pixel_array (map #(product_fn (-> % (keys) (first)) (-> % (vals) (first)) queryday) pixel_map)
+        pixel_array (map #(product_fn (-> % (keys) (first)) (-> % (vals) (first)) query_ord) pixel_map)
         ; group product coll by row
         ; [{:pixely 3159045} [{:pixely 3159045, :pixelx -2114775, :val 6290},...] ...]
         row_groups (util/coll-groups pixel_array [:pixely]) 
