@@ -213,52 +213,54 @@
 
 (defn landcover
   "Return the landcover value given the segments, probabilities, query_day and rank for a location"
-  [segments_probabilities query_day rank]
-  (let [sorted_segments (util/sort-by-key (:segments segments_probabilities) :sday)
-        probabilities   (:predictions segments_probabilities)
-        characterized_segments (map #(characterize_segment % query_day probabilities rank) sorted_segments)
-        first_start_day   (-> (first sorted_segments) (:sday) (util/to-ordinal))
-        last_end_day      (-> (last sorted_segments)  (:eday) (util/to-ordinal))
-        intersected_segment (first (filter :intersects characterized_segments))
-        eday_bday_model   (first (filter :btw_eday_bday characterized_segments))
-        between_eday_sday (reduce falls-between-eday-sday characterized_segments)
-        between_bday_sday (reduce falls-between-bday-sday characterized_segments)]
+  ([segments_probabilities query_day rank conf]
+   (let [sorted_segments (util/sort-by-key (:segments segments_probabilities) :sday)
+         probabilities   (:predictions segments_probabilities)
+         characterized_segments (map #(characterize_segment % query_day probabilities rank) sorted_segments)
+         first_start_day   (-> (first sorted_segments) (:sday) (util/to-ordinal))
+         last_end_day      (-> (last sorted_segments)  (:eday) (util/to-ordinal))
+         intersected_segment (first (filter :intersects characterized_segments))
+         eday_bday_model   (first (filter :btw_eday_bday characterized_segments))
+         between_eday_sday (reduce falls-between-eday-sday characterized_segments)
+         between_bday_sday (reduce falls-between-bday-sday characterized_segments)]
 
-    (cond
+     (cond
        ; query date preceds first segment start date and fill_begin config is true
-       (= true (< query_day first_start_day) (:fill_begin config))
-         (:classification (first characterized_segments)) ; return value of the first segment
+       (= true (< query_day first_start_day) (:fill_begin conf))
+       (:classification (first characterized_segments)) ; return value of the first segment
 
        ; query date preceds first segment start date
        (= true (< query_day first_start_day))
-         (:lc_insuff (:lc_defaults config)) ; return lc_insuff value from lc_defaults config
+       (:lc_insuff (:lc_defaults conf)) ; return lc_insuff value from lc_defaults config
 
        ; query date follows last segment end date and fill_end config is true
-       (= true (> query_day last_end_day) (:fill_end config))
-         (:classification (last characterized_segments)) ; return value of the last segment
-      
+       (= true (> query_day last_end_day) (:fill_end conf))
+       (:classification (last characterized_segments)) ; return value of the last segment
+       
        ; query date follows last segment end date
        (= true (> query_day last_end_day))
-         (:lc_insuff (:lc_defaults config)) ; return the lc_insuff value from the lc_defaults config
+       (:lc_insuff (:lc_defaults conf)) ; return the lc_insuff value from the lc_defaults config
 
        ; query date falls between a segments start date and end date
        (not (nil? intersected_segment))
-         (:classification intersected_segment) ; return the class value for the intercepted model
+       (:classification intersected_segment) ; return the class value for the intercepted model
 
        ; query date falls between segments of same landcover classification and fill_samelc config is true
-       (= true (:fill_samelc config) (= (:classification (first between_eday_sday)) (:classification (last between_eday_sday))))
-         (:classification (last between_eday_sday)) ; return the value from the last model from the pair of models the query date fell between
+       (= true (:fill_samelc conf) (= (:classification (first between_eday_sday)) (:classification (last between_eday_sday))))
+       (:classification (last between_eday_sday)) ; return the value from the last model from the pair of models the query date fell between
 
        ; query date falls between one segments break date and the following segments start date and fill_difflc config is true
-       (= true (:fill_difflc config) (not (nil? (last between_bday_sday))))
-         (:classification (last between_bday_sday )) ; return the value from the last model from the pair of models the query date fell between
+       (= true (:fill_difflc conf) (not (nil? (last between_bday_sday))))
+       (:classification (last between_bday_sday )) ; return the value from the last model from the pair of models the query date fell between
 
        ; query date falls between a segments end date and break date and fill_difflc config is true
-       (= true (:fill_difflc config) (not (nil? eday_bday_model)))
-         (:classification eday_bday_model) ; return the value from the model where the query date intersected the end date and break date
+       (= true (:fill_difflc conf) (not (nil? eday_bday_model)))
+       (:classification eday_bday_model) ; return the value from the model where the query date intersected the end date and break date
 
        :else ; finally as a last resort return the lc_inbtw value from the configuration
-         (:lc_inbtw config))))
+       (:lc_inbtw conf))))
+  ([segments_probabilities query_day rank]
+   (landcover segments_probabilities query_day rank config)))
 
 (defn primary-landcover
   "Return the highest landcover class value"

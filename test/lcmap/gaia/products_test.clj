@@ -3,6 +3,7 @@
             [lcmap.gaia.products :as products]
             [lcmap.gaia.file     :as file]
             [lcmap.gaia.util     :as util]
+            [lcmap.gaia.config   :refer [config]]
             [lcmap.gaia.test-resources :as tr]))
 
 
@@ -159,5 +160,44 @@
         segment_model (merge first_segment {:probabilities sorted_probabilities})]
     (is (= 7 (products/classify segment_model tr/query_ord 0 nbrdiff)))))
 
+(deftest characterize_segment_test
+  (with-redefs [products/nbr (fn [i] 66)
+                products/classify (fn [a b c d] 99)]
+    (let [segment {:sday "1990-04-27" :eday "2000-06-11" :bday "2000-06-11"}
+          query_day (-> "1998-07-01" (util/to-ordinal))
+          probabilities [{:sday "1990-04-27" :date "1995-07-01"} 
+                         {:sday "2000-07-10" :date "2001-07-01"}]
+          characterized (products/characterize_segment segment query_day probabilities 0)]
+      (is (= characterized {:intersects true
+                            :precedes_sday false
+                            :follows_eday false
+                            :follows_bday false
+                            :btw_eday_bday false
+                            :sday (-> "1990-04-27" (util/to-ordinal))
+                            :eday (-> "2000-06-11" (util/to-ordinal))
+                            :bday (-> "2000-06-11" (util/to-ordinal))
+                            :growth true
+                            :decline false
+                            :probabilities '({:sday "1990-04-27", :date "1995-07-01"})
+                            :classification 99})))))
 
+(deftest landcover_test ; sday 1982-12-27 bday 2001-10-04 eday 2001-09-10
+  (let [segments_probabilities tr/first_segments_predictions]
+    (is (= 7 (products/landcover segments_probabilities (-> "1980-01-01" (util/to-ordinal)) 0)))
+    
+    (is (= (:lc_insuff (:lc_defaults config))
+           (products/landcover segments_probabilities (-> "1980-01-01" (util/to-ordinal)) 0 (merge config {:fill_begin false}))))
+
+    (is (= 5 (products/landcover segments_probabilities (-> "2002-01-01" (util/to-ordinal)) 0)))
+
+    (is (= (:lc_insuff (:lc_defaults config))
+           (products/landcover segments_probabilities (-> "2002-01-01" (util/to-ordinal)) 0 (merge config {:fill_end false}))
+           ))
+
+
+    )
+  
+
+
+)
 
