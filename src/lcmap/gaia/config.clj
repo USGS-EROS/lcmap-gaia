@@ -26,6 +26,15 @@
             (or (try-read (:lc-snow    environ/env)) 7)
             (or (try-read (:lc-barren  environ/env)) 8)
             (or (try-read (:lc-none    environ/env)) 0)]
+   :lc-develop-index 0
+   :lc-ag-index      1
+   :lc-grass-index   2
+   :lc-tree-index    3
+   :lc-water-index   4
+   :lc-wetland-index 5
+   :lc-snow-index    6
+   :lc-barren-index  7
+   :lc-none-index    8
    :lc_defaults (hash-map :lc_inbtw     (or (try-read (:lc-inbetween    environ/env)) 9)   ; default value for between models
                           :lc_insuff    (or (try-read (:lc-insufficient environ/env)) 10)  ; insufficient data, such as at the end of a time series
                           :lcc_growth   (or (try-read (:lc-growth       environ/env)) 151)

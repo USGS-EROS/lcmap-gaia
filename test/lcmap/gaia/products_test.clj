@@ -129,18 +129,13 @@
            (products/mean-probabilities preds)))))
 
 (deftest classify_positive_nbr_test
-  (let [first_pixel_map (first tr/pixel_map)
-        pixel_segments_probabilities (first (vals first_pixel_map))
-        sorted_segments (util/sort-by-key (:segments pixel_segments_probabilities) :sday)
-        probabilities (:predictions pixel_segments_probabilities)
-        first_segment (first sorted_segments)
+  (let [first_segment (first tr/first_sorted_segments)
         sday (-> first_segment (:sday) (util/to-ordinal))
         nbrdiff (products/nbr first_segment)
-        segment_probabilities (filter (fn [i] (= (:sday i) sday)) probabilities)
+        segment_probabilities (filter (fn [i] (= (util/to-ordinal (:sday i)) sday)) tr/first_probabilities)
         sorted_probabilities (util/sort-by-key segment_probabilities :date)
         segment_model (merge first_segment {:probabilities sorted_probabilities})]
-    (is (= 7 (products/classify segment_model tr/query_ord 0 nbrdiff)))
-    ))
+    (is (= 7 (products/classify segment_model tr/query_ord 0 nbrdiff)))))
 
 (deftest classify_negative_nbr_test
   (is true))

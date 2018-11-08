@@ -51,7 +51,8 @@
 (defn to-ordinal
   "Convert ISO8601 date string to an ordinal value"
   [datestring]
-  (-> datestring (to-javatime) (javatime-to-ordinal)))
+  (when (not (nil? datestring))
+    (-> datestring (to-javatime) (javatime-to-ordinal))))
 
 (defn coll-groups
   "Group collection of hash maps by shared keys values"

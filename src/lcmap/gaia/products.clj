@@ -152,16 +152,14 @@
 (defn classify
   "Return the classification value for a single segment given a query_day and rank"
   ([model query_ord rank nbrdiff]
-   (let [sorted_predictions (util/sort-by-key (:probabilities model) :date)
-         first_class (-> sorted_predictions (first) (get-class))
-         last_class  (-> sorted_predictions (last) (get-class))
-         first_forest_date (-> sorted_predictions (first-date-of-class (:lc-tree (:lc_map config))) (util/to-ordinal))   
-                                        ; (first-date-of-class sorted_predictions (:lc-tree  (:lc_map config)))
-         first_grass_date (-> sorted_predictions (first-date-of-class (:lc-grass (:lc_map config))) (util/to-ordinal))    
-                                        ; (first-date-of-class sorted_predictions (:lc-grass (:lc_map config)))
-         mean_probabilities (mean-probabilities sorted_predictions)
-         grass_val (:lc-grass (:lc_map config))
-         tree_val (:lc-tree (:lc_map config))]
+   (let [sorted_predictions (:probabilities model) ; sorted in characterize_segment
+         first_class (-> sorted_predictions (first) (:prob) (get-class))
+         last_class  (-> sorted_predictions (last)  (:prob) (get-class))
+         grass_val (nth (:lc_map config) (:lc-grass-index config))
+         tree_val  (nth (:lc_map config) (:lc-tree-index config))
+         first_forest_date (-> sorted_predictions (first-date-of-class tree_val  ) (util/to-ordinal))   
+         first_grass_date (-> sorted_predictions (first-date-of-class grass_val ) (util/to-ordinal))    
+         mean_probabilities (mean-probabilities sorted_predictions)]
 
      (cond
        ; nbr_slope > 0.05 and first_class is 'grass' and last is 'forest'
