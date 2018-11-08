@@ -114,10 +114,12 @@
 
 (defn get-class
   "Returns the class value given a collection of probabilities"
-  [probs]
-  (let [sorted (reverse (sort probs)) 
-        position (.indexOf probs (nth sorted 0))]
-    (nth (:lc_map config) position)))
+  ([probs rank]
+   (let [sorted (reverse (sort probs)) 
+         position (.indexOf probs (nth sorted rank))]
+     (nth (:lc_map config) position)))
+  ([probs]
+   (get-class probs 0)))
 
 (defn first-date-of-class
   "Returns the 'date' value from a collection of predictions for the first occurence of a given classification"
@@ -157,8 +159,8 @@
          last_class  (-> sorted_predictions (last)  (:prob) (get-class))
          grass_val (nth (:lc_map config) (:lc-grass-index config))
          tree_val  (nth (:lc_map config) (:lc-tree-index config))
-         first_forest_date (-> sorted_predictions (first-date-of-class tree_val  ) (util/to-ordinal))   
-         first_grass_date (-> sorted_predictions (first-date-of-class grass_val ) (util/to-ordinal))    
+         first_forest_date (-> sorted_predictions (first-date-of-class tree_val) (util/to-ordinal))   
+         first_grass_date (-> sorted_predictions (first-date-of-class grass_val) (util/to-ordinal))    
          mean_probabilities (mean-probabilities sorted_predictions)]
 
      (cond
@@ -174,7 +176,7 @@
          (nth [grass_val tree_val] rank)
          (nth [tree_val grass_val] rank))
        :else ; calculate the mean across all probabilities for the segment, classify based on highest probability
-       (get-class mean_probabilities))))
+       (get-class mean_probabilities rank))))
   ([model query_ord rank]
    (let [nbrdiff (nbr model)]
      (classify model query_ord rank nbrdiff))))

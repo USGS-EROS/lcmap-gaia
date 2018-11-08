@@ -129,6 +129,28 @@
            (products/mean-probabilities preds)))))
 
 (deftest classify_positive_nbr_test
+   (let [model (merge tr/segmentA {:probabilities tr/grass_to_forest_probs})
+         post_forest_query_date (-> "2001-07-01" (util/to-ordinal))
+         pre_forest_query_date (-> "1998-07-01" (util/to-ordinal))
+         nbrdiff (float 0.06)]
+     ; default value 3 is grass, 4 is tree
+     (is (= 4 (products/classify model post_forest_query_date 0 nbrdiff)))
+     (is (= 3 (products/classify model pre_forest_query_date 0 nbrdiff)))
+     (is (= 3 (products/classify model post_forest_query_date 1 nbrdiff)))
+     (is (= 4 (products/classify model pre_forest_query_date 1 nbrdiff)))))
+
+(deftest classify_negative_nbr_test
+  (let [model (merge tr/segmentA {:probabilities tr/forest_to_grass_probs})
+        post_grass_query_date (-> "2001-07-01" (util/to-ordinal))
+        pre_grass_query_date (-> "1998-07-01" (util/to-ordinal))
+        nbrdiff (float -0.06)]
+    ; default value 3 is grass, 4 is tree
+    (is (= 3 (products/classify model post_grass_query_date 0 nbrdiff)))
+    (is (= 4 (products/classify model pre_grass_query_date 0 nbrdiff)))
+    (is (= 4 (products/classify model post_grass_query_date 1 nbrdiff)))
+    (is (= 3 (products/classify model pre_grass_query_date 1 nbrdiff)))))
+
+(deftest classify_else_test
   (let [first_segment (first tr/first_sorted_segments)
         sday (-> first_segment (:sday) (util/to-ordinal))
         nbrdiff (products/nbr first_segment)
@@ -136,12 +158,6 @@
         sorted_probabilities (util/sort-by-key segment_probabilities :date)
         segment_model (merge first_segment {:probabilities sorted_probabilities})]
     (is (= 7 (products/classify segment_model tr/query_ord 0 nbrdiff)))))
-
-(deftest classify_negative_nbr_test
-  (is true))
-
-(deftest classify_else_test
-  (is true))
 
 
 
