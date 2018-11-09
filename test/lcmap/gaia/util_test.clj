@@ -33,12 +33,6 @@
     (is (= (util/javatime-to-ordinal jt)
            726659))))
 
-(deftest ismap?-affirmative-test
-  (is (util/ismap? {:a "map"})))
-
-(deftest ismap?-negative-test
-  (is (not (util/ismap? :not_a_map))))
-
 (deftest matching-keys-return-collection-test
   (let [map_a {:foo true :bar false}
         map_b {:foo false :bar true}

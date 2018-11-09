@@ -83,17 +83,12 @@
         grouped_lists (group-by (variable-juxt mapkeys) conc_lists)]
     (map #(merge (first %) (last %)) (vals grouped_lists))))
 
-(defn ismap?
-  "Returns boolean true / false if input is a hash-map "
-  [input]
-  (= (type input) clojure.lang.PersistentArrayMap))
-
 (defn matching-keys
   "Return a collection of the map arguments if the key values equal the 
    desired match value, else return map_b. Used in a call to reduce for
    identifying desired maps in a collection"
   [map_a map_b key_a key_b match_value]
-  (if (ismap? map_a)
+  (if (map? map_a)
       (if (= match_value (key_a map_a) (key_b map_b))
           (do [map_a map_b])
           (do map_b))       

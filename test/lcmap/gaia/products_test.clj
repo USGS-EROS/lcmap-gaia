@@ -130,7 +130,7 @@
            (products/mean-probabilities preds)))))
 
 (deftest classify_positive_nbr_test
-   (let [model (merge tr/segmentA {:probabilities tr/grass_to_forest_probs})
+   (let [model (merge tr/first_segment_modded {:probabilities tr/grass_to_forest_probs})
          post_forest_query_date (-> "2001-07-01" (util/to-ordinal))
          pre_forest_query_date (-> "1998-07-01" (util/to-ordinal))
          nbrdiff (float 0.06)]
@@ -141,7 +141,7 @@
      (is (= 4 (products/classify model pre_forest_query_date 1 nbrdiff)))))
 
 (deftest classify_negative_nbr_test
-  (let [model (merge tr/segmentA {:probabilities tr/forest_to_grass_probs})
+  (let [model (merge tr/first_segment_modded {:probabilities tr/forest_to_grass_probs})
         post_grass_query_date (-> "2001-07-01" (util/to-ordinal))
         pre_grass_query_date (-> "1998-07-01" (util/to-ordinal))
         nbrdiff (float -0.06)]
@@ -192,11 +192,28 @@
            (products/landcover segments_probabilities (-> "1980-01-01" (util/to-ordinal)) 0 (merge config {:fill_begin false}))))
 
     ; query date follows last segment end date and fill_end is true
-    (is (= (:water (:lc_map config)) (products/landcover segments_probabilities (-> "2002-01-01" (util/to-ordinal)) 0)))
+    (is (= (:water (:lc_map config)) (products/landcover segments_probabilities (-> "2018-01-01" (util/to-ordinal)) 0)))
 
     ; query date follows last segment end date
     (is (= (:lc_insuff (:lc_defaults config))
            (products/landcover segments_probabilities (-> "2017-10-01" (util/to-ordinal)) 0 (merge config {:fill_end false}))))
+
+    ; query date falls between a segments start and end dates
+    (is (= (:water (:lc_map config))
+           (products/landcover segments_probabilities (-> "2002-01-01" (util/to-ordinal)) 0)))
+
+    ; query date falls between segments of same landcover classification and fill_samelc config is true
+    (is (= (:tree (:lc_map config))
+           (products/landcover tr/first_segments_matching_predictions (-> "2001-09-20" (util/to-ordinal)) 0)))
+
+
+    (let [modded_segments {:segments [tr/first_segment_modded (last (:segments tr/first_segments_predictions))] :predictions (:predictions tr/first_segments_predictions)}]
+      ; query date falls between one segments break date and the following segments start date and fill_difflc config is true
+      (is (= (:water (:lc_map config)) (products/landcover modded_segments (-> "2001-10-03" (util/to-ordinal)) 0)))
+      ; query date falls between a segments end date and breake date and fill_difflc config is true
+      (is (= (:snow (:lc_map config)) (products/landcover modded_segments (-> "2001-09-20" (util/to-ordinal)) 0)))
+      )
+
 
 
     )

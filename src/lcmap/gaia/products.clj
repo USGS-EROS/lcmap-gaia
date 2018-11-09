@@ -229,6 +229,7 @@
      ;; (prn (str "first_start_day: " first_start_day))
      ;; (prn (str "last_end_day: " last_end_day))
 
+
      (cond
        ; query date precedes first segment start date and fill_begin config is true
        (= true (< query_day first_start_day) (:fill_begin conf))
@@ -252,18 +253,18 @@
 
        ; query date falls between segments of same landcover classification and fill_samelc config is true
        (= true (:fill_samelc conf) (= (:classification (first between_eday_sday)) (:classification (last between_eday_sday))))
-       6 ;(:classification (last between_eday_sday)) ; return the value from the last model from the pair of models the query date fell between
+         (:classification (last between_eday_sday)) ; return the value from the last model from the pair of models the query date fell between
 
        ; query date falls between one segments break date and the following segments start date and fill_difflc config is true
        (= true (:fill_difflc conf) (not (nil? (last between_bday_sday))))
-       7 ;(:classification (last between_bday_sday )) ; return the value from the last model from the pair of models the query date fell between
+         (:classification (last between_bday_sday )) ; return the value from the last model from the pair of models the query date fell between
 
        ; query date falls between a segments end date and break date and fill_difflc config is true
        (= true (:fill_difflc conf) (not (nil? eday_bday_model)))
-       8 ;(:classification eday_bday_model) ; return the value from the model where the query date intersected the end date and break date
+         (:classification eday_bday_model) ; return the value from the model where the query date intersected the end date and break date
 
        :else ; finally as a last resort return the lc_inbtw value from the configuration
-       9 ;(:lc_inbtw conf)
+         (:lc_inbtw conf)
        )))
   ([segments_probabilities query_day rank]
    (landcover segments_probabilities query_day rank config)))

@@ -24,8 +24,8 @@
 (def first_sorted_segments (util/sort-by-key (:segments first_segments_predictions) :sday))
 (def first_probabilities (:predictions first_segments_predictions))
 
-(def segmentA
-  {:thint -12926.188, :bday "2001-10-04", :grmag 112.140785, :blint 4227.913, :grrmse 117.07277, 
+(def first_segment_modded
+  {:thint -12926.188, :bday "2001-10-02", :grmag 112.140785, :blint 4227.913, :grrmse 117.07277, 
    :s2mag 568.2095, :sday "1982-12-27", :grint 14096.05, 
    :grcoef [-0.018689321 -7.062428 52.64909 66.31735 -3.384397 15.727496 17.459877], :px -2114685, 
    :rermse 103.93077, :s1mag 667.05176, :eday "2001-09-10", :nimag 1318.0848, 
@@ -58,6 +58,19 @@
                     :prob [0.082641214 0.23013946 1.6417161E-8 0.3288632 3.1727698E-9 7.0137938E-4 0.35765457 6.6413847E-8 6.6413847E-8]} 
                    {:cx -2115585, :cy 3119805, :px -2114685, :py 3118215, :sday "1982-12-27", :eday "2001-09-10", :date "2000-07-01"
                     :prob [6.6413847E-8 6.6413847E-8 7.0137938E-4 0.082641214 0.35765457 3.1727698E-9 1.6417161E-8 0.3288632 0.23013946]}] )
+
+; first segment sday 1982-12-27   eday 2001-09-10  bday 2001-10-04
+; last segment  sday 2001-10-04   eday 2017-09-14
+
+;first prediction sday 1982-12-27 eday 2001-09-10
+;last prediction  sday 2001-10-04 eday 2017-09-14
+(def matching_forest_first_prob {:cx -2115585, :cy 3119805, :px -2114685, :py 3118215, :sday "1982-12-27", :eday "2001-09-10", :date "1995-07-01"
+                                 :prob [0.082641214 0.23013946 1.6417161E-8 0.7288632 3.1727698E-9 7.0137938E-4 0.35765457 6.6413847E-8 6.6413847E-8]})
+(def matching_forest_last_prob {:cx -2115585, :cy 3119805, :px -2114685, :py 3118215, :sday "2001-10-04", :eday "2017-09-14", :date "2017-09-14"
+                                :prob [0.082641214 0.23013946 1.6417161E-8 0.7288632 3.1727698E-9 7.0137938E-4 0.35765457 6.6413847E-8 6.6413847E-8]})
+
+(def first_segments_matching_predictions (merge first_segments_predictions {:predictions [matching_forest_first_prob matching_forest_last_prob]}))
+
 
 (def first_pixelxy    (-> pixel_map (first) (keys) (first)))
 (def first_segment    (-> pixel_map (first) (vals) (first) (:segments) (first)))
