@@ -181,18 +181,22 @@
                             :probabilities '({:sday "1990-04-27", :date "1995-07-01"})
                             :classification 99})))))
 
-(deftest landcover_test ; sday 1982-12-27 bday 2001-10-04 eday 2001-09-10
+(deftest landcover_test ; first segment -> sday 1982-12-27 bday 2001-10-04 eday 2001-09-10
+                        ; last segment -> sday 2001-10-04  bday 2017-09-14 eday 2017-09-14
   (let [segments_probabilities tr/first_segments_predictions]
-    (is (= 7 (products/landcover segments_probabilities (-> "1980-01-01" (util/to-ordinal)) 0)))
+    ; query date precedes first segment start date and fill_begin is true
+    (is (= (:snow (:lc_map config)) (products/landcover segments_probabilities (-> "1980-01-01" (util/to-ordinal)) 0)))
     
+    ; query date precedes first segment start date
     (is (= (:lc_insuff (:lc_defaults config))
            (products/landcover segments_probabilities (-> "1980-01-01" (util/to-ordinal)) 0 (merge config {:fill_begin false}))))
 
-    (is (= 5 (products/landcover segments_probabilities (-> "2002-01-01" (util/to-ordinal)) 0)))
+    ; query date follows last segment end date and fill_end is true
+    (is (= (:water (:lc_map config)) (products/landcover segments_probabilities (-> "2002-01-01" (util/to-ordinal)) 0)))
 
+    ; query date follows last segment end date
     (is (= (:lc_insuff (:lc_defaults config))
-           (products/landcover segments_probabilities (-> "2002-01-01" (util/to-ordinal)) 0 (merge config {:fill_end false}))
-           ))
+           (products/landcover segments_probabilities (-> "2017-10-01" (util/to-ordinal)) 0 (merge config {:fill_end false}))))
 
 
     )
