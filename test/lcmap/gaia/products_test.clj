@@ -206,19 +206,12 @@
     (is (= (:tree (:lc_map config))
            (products/landcover tr/first_segments_matching_predictions (-> "2001-09-20" (util/to-ordinal)) 0)))
 
-
     (let [modded_segments {:segments [tr/first_segment_modded (last (:segments tr/first_segments_predictions))] :predictions (:predictions tr/first_segments_predictions)}]
       ; query date falls between one segments break date and the following segments start date and fill_difflc config is true
       (is (= (:water (:lc_map config)) (products/landcover modded_segments (-> "2001-10-03" (util/to-ordinal)) 0)))
       ; query date falls between a segments end date and breake date and fill_difflc config is true
       (is (= (:snow (:lc_map config)) (products/landcover modded_segments (-> "2001-09-20" (util/to-ordinal)) 0)))
-      )
-
-
-
-    )
-  
-
-
-)
+      ; as a last resort return lc_inbtw configuration value
+      (is (= (:lc_inbtw config))
+          (products/landcover modded_segments (-> "2001-09-20" (util/to-ordinal)) 0 (merge config {:fill_difflc false}))))))
 

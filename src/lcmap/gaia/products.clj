@@ -192,7 +192,7 @@
         precedes_sday     (< query_day sday)
         follows_eday      (> query_day eday)
         follows_bday      (>= query_day bday)
-        between_eday_bday (>= eday query_day bday)
+        between_eday_bday (<= eday query_day bday)
         growth  (> nbrdiff 0.05)
         decline (< nbrdiff -0.05)
         segment_probabilities (filter (fn [i] (= (-> i (:sday) (util/to-ordinal)) sday)) probabilities)
@@ -224,12 +224,6 @@
          between_eday_sday (reduce falls-between-eday-sday characterized_segments)
          between_bday_sday (reduce falls-between-bday-sday characterized_segments)]
 
-     ;; (prn (str "****** \n " conf "\n *******"))
-     ;; (prn (str "** query_day: " query_day))
-     ;; (prn (str "first_start_day: " first_start_day))
-     ;; (prn (str "last_end_day: " last_end_day))
-
-
      (cond
        ; query date precedes first segment start date and fill_begin config is true
        (= true (< query_day first_start_day) (:fill_begin conf))
@@ -256,7 +250,7 @@
          (:classification (last between_eday_sday)) ; return the value from the last model from the pair of models the query date fell between
 
        ; query date falls between one segments break date and the following segments start date and fill_difflc config is true
-       (= true (:fill_difflc conf) (not (nil? (last between_bday_sday))))
+       (= true (:fill_difflc conf) (not (map? between_bday_sday)))
          (:classification (last between_bday_sday )) ; return the value from the last model from the pair of models the query date fell between
 
        ; query date falls between a segments end date and break date and fill_difflc config is true
@@ -264,8 +258,7 @@
          (:classification eday_bday_model) ; return the value from the model where the query date intersected the end date and break date
 
        :else ; finally as a last resort return the lc_inbtw value from the configuration
-         (:lc_inbtw conf)
-       )))
+         (:lc_inbtw conf))))
   ([segments_probabilities query_day rank]
    (landcover segments_probabilities query_day rank config)))
 
