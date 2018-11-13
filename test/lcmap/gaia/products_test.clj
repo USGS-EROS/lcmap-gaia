@@ -208,10 +208,55 @@
 
     (let [modded_segments {:segments [tr/first_segment_modded (last (:segments tr/first_segments_predictions))] :predictions (:predictions tr/first_segments_predictions)}]
       ; query date falls between one segments break date and the following segments start date and fill_difflc config is true
-      (is (= (:water (:lc_map config)) (products/landcover modded_segments (-> "2001-10-03" (util/to-ordinal)) 0)))
+      (is (= (:water (:lc_map config)) 
+             (products/landcover modded_segments (-> "2001-10-03" (util/to-ordinal)) 0)))
       ; query date falls between a segments end date and breake date and fill_difflc config is true
-      (is (= (:snow (:lc_map config)) (products/landcover modded_segments (-> "2001-09-20" (util/to-ordinal)) 0)))
+      (is (= (:snow (:lc_map config)) 
+             (products/landcover modded_segments (-> "2001-09-20" (util/to-ordinal)) 0)))
       ; as a last resort return lc_inbtw configuration value
       (is (= (:lc_inbtw config))
           (products/landcover modded_segments (-> "2001-09-20" (util/to-ordinal)) 0 (merge config {:fill_difflc false}))))))
+
+
+(deftest landcover_confidence_test ; first segment -> sday 1982-12-27 bday 2001-10-04 eday 2001-09-10
+                                   ; last segment -> sday 2001-10-04  bday 2017-09-14 eday 2017-09-14
+  (let [segments_probabilities tr/first_segments_predictions]
+    ; query date precedes first segment start date and fill_begin is true
+    (is (= (:lcc_back (:lc_defaults config)) (products/confidence segments_probabilities (-> "1980-01-01" (util/to-ordinal)) 0)))
+    
+    (let [modded_segments {:segments [(first (:segments segments_probabilities))
+                                      (merge (last (:segments segments_probabilities)) {:chprob 1.0})]
+                           :predictions (:predictions segments_probabilities)}]
+
+      ; query date follows last segment end date and change prob is 1
+      (is (= (:lcc_afterbr (:lc_defaults config))
+             (products/confidence modded_segments (-> "2017-10-01" (util/to-ordinal)) 0))))
+
+
+     ; query date follows last segment end date and change prob is 0
+    (is (= (:lcc_forwards (:lc_defaults config))
+           (products/confidence segments_probabilities (-> "2017-10-01" (util/to-ordinal)) 0)))
+
+    ; query date falls between a segments start date and end date and growth is true
+    (is (= (:lcc_growth (:lc_defaults config))
+           (products/confidence segments_probabilities (-> "1995-07-01" (util/to-ordinal)) 0)))
+
+    ; query date falls between a segments start date and end date and decline is true
+    (with-redefs [products/nbr (fn [i] -0.66)]
+      (is (= (:lcc_decline (:lc_defaults config))
+             (products/confidence segments_probabilities (-> "1995-07-01" (util/to-ordinal)) 0))))
+
+    ; query date falls between a segments start and end date, neither growth nor decline
+    (with-redefs [products/nbr (fn [i] 0.01)]
+      (is (= 8
+             (products/confidence segments_probabilities (-> "1995-07-01" (util/to-ordinal)) 0))))
+
+    ; query date falls between segments of same landcover classification and fill_samelc config is true
+    (is (= (:lcc_samelc (:lc_defaults config))
+           (products/confidence tr/first_segments_matching_predictions (-> "2001-09-20" (util/to-ordinal)) 0)))
+
+    ; query date falls between segments with different landcover classifications
+    (is (= (:lcc_difflc (:lc_defaults config))
+           (products/confidence segments_probabilities (-> "2001-09-20" (util/to-ordinal)) 0)))))
+
 

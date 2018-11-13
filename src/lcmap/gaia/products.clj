@@ -318,7 +318,7 @@
 
       ; query date falls between a segments start date and end date
       (not (nil? intersected_segment))
-        (scale-probability (nth (last (:probabilities intersected_segment)) rank))  
+        (scale-probability (nth (:prob (last (:probabilities intersected_segment))) rank))
 
       ; query date falls between segments of same landcover classification
       (= true (= (:classification (first between_eday_sday)) (:classification (last between_eday_sday))))
