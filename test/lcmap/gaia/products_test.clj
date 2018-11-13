@@ -6,18 +6,14 @@
             [lcmap.gaia.config   :refer [config]]
             [lcmap.gaia.test-resources :as tr]))
 
-
-(def first_pixel (first tr/pixel_map))
-(def first_segments_predictions (first (vals first_pixel))) 
-(def response_set (set [:pixelx :pixely :val]))
-
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;;;;;;;;;;;;;;;    CHANGE PRODUCT TESTS    ;;;;;;;;;;;;;;;;;
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
+(def response_set (set [:pixelx :pixely :val]))
 
 (deftest time-of-change-single-model-test
-  (let [result (products/time-of-change (first (:segments first_segments_predictions))  tr/query_ord 100 -100)]
+  (let [result (products/time-of-change (first (:segments tr/first_segments_predictions))  tr/query_ord 100 -100)]
     (is (= (set (keys result))  response_set))))
 
 (deftest time-of-change-chip-level-test
@@ -27,17 +23,17 @@
     (is (= (set (keys first_result)) response_set))))
 
 (deftest time-since-change-single-model-test
-  (let [result (products/time-since-change (first (:segments first_segments_predictions)) tr/query_ord 100 -100)]
+  (let [result (products/time-since-change (first (:segments tr/first_segments_predictions)) tr/query_ord 100 -100)]
     (is (= (set (keys result)) response_set))))
 
 (deftest time-since-change-chip-level-test
   (let [results (map #(products/time-since-change (-> % (keys) (first)) (-> % (vals) (first)) tr/query_ord) tr/pixel_map)
-        non_nils (filter (fn [i] (some? (:val i))) results)]
-    ;(is (= (count non_nils) 763))
+        greater_thans (filter (fn [i] (> 1000 (:val i))) results)]
+    (is (= (count greater_thans) 5887))
     (is (= (count results) 10000))))
 
 (deftest magnitude-of-change-single-model-test
-  (let [result (products/magnitude-of-change (first (:segments first_segments_predictions)) tr/query_ord 100 -100)]
+  (let [result (products/magnitude-of-change (first (:segments tr/first_segments_predictions)) tr/query_ord 100 -100)]
     (is (= (set (keys result)) response_set))))
 
 (deftest magnitude-of-change-chip-level-test
@@ -47,7 +43,7 @@
     (is (= (count results) 10000))))
 
 (deftest length-of-segment-single-model-test
-  (let [result (products/length-of-segment (first (:segments first_segments_predictions)) tr/query_ord 100 -100)]
+  (let [result (products/length-of-segment (first (:segments tr/first_segments_predictions)) tr/query_ord 100 -100)]
     (is (= (set (keys result)) response_set))))
 
 (deftest length-of-segment-chip-level-test
@@ -57,7 +53,7 @@
     (is (= (count results) 10000))))
 
 (deftest curve-fit-single-model-test
-  (let [result (products/curve-fit (first (:segments first_segments_predictions)) tr/query_ord 100 -100)]
+  (let [result (products/curve-fit (first (:segments tr/first_segments_predictions)) tr/query_ord 100 -100)]
     (is (= (set (keys result)) response_set))))
 
 (deftest curve-fit-chip-level-test
@@ -101,21 +97,21 @@
     (is (= (products/falls-between-bday-sday map_a map_b) expected))))
 
 (deftest nbr_test
-  (let [first_nbr (products/nbr tr/first_segment)
-        last_nbr  (products/nbr tr/last_segment)]
+  (let [first_nbr (products/nbr (first tr/first_sorted_segments))
+        last_nbr  (products/nbr (last tr/first_sorted_segments))]
     (is (> first_nbr 0.12))
     (is (< first_nbr 0.14))
-    (is (> last_nbr  0.023))
-    (is (< last_nbr  0.024))))
+    (is (> last_nbr  0.33))
+    (is (< last_nbr  0.34))))
 
 (deftest get_class_test
-  (let [first_class (products/get-class tr/first_probs)
-        last_class  (products/get-class tr/last_probs)]
+  (let [first_class (products/get-class (:prob (first (:predictions tr/first_segments_predictions))))
+        last_class  (products/get-class (:prob (last (:predictions tr/first_segments_predictions))))]
     (is (= first_class 7))
-    (is (= last_class 2))))
+    (is (= last_class 5))))
 
 (deftest first_date_of_class_test
-  (let [sorted_predictions (util/sort-by-key tr/first_grouped_predictions :date)]
+  (let [sorted_predictions (util/sort-by-key (:predictions tr/first_segments_predictions) :date)]
     (is (= "1995-07-01" (products/first-date-of-class sorted_predictions 7)))
     (is (= "2012-07-01" (products/first-date-of-class sorted_predictions 5)))
     (is (= nil (products/first-date-of-class sorted_predictions 4)))))
@@ -130,7 +126,7 @@
            (products/mean-probabilities preds)))))
 
 (deftest classify_positive_nbr_test
-   (let [model (merge tr/first_segment_modded {:probabilities tr/grass_to_forest_probs})
+   (let [model (merge (first tr/first_sorted_segments) {:probabilities tr/grass_to_forest_probs})
          post_forest_query_date (-> "2001-07-01" (util/to-ordinal))
          pre_forest_query_date (-> "1998-07-01" (util/to-ordinal))
          nbrdiff (float 0.06)]
@@ -141,7 +137,7 @@
      (is (= 4 (products/classify model pre_forest_query_date 1 nbrdiff)))))
 
 (deftest classify_negative_nbr_test
-  (let [model (merge tr/first_segment_modded {:probabilities tr/forest_to_grass_probs})
+  (let [model (merge (first tr/first_sorted_segments) {:probabilities tr/forest_to_grass_probs})
         post_grass_query_date (-> "2001-07-01" (util/to-ordinal))
         pre_grass_query_date (-> "1998-07-01" (util/to-ordinal))
         nbrdiff (float -0.06)]
@@ -155,7 +151,7 @@
   (let [first_segment (first tr/first_sorted_segments)
         sday (-> first_segment (:sday) (util/to-ordinal))
         nbrdiff (products/nbr first_segment)
-        segment_probabilities (filter (fn [i] (= (util/to-ordinal (:sday i)) sday)) tr/first_probabilities)
+        segment_probabilities (filter (fn [i] (= (util/to-ordinal (:sday i)) sday)) (:predictions tr/first_segments_predictions))
         sorted_probabilities (util/sort-by-key segment_probabilities :date)
         segment_model (merge first_segment {:probabilities sorted_probabilities})]
     (is (= 7 (products/classify segment_model tr/query_ord 0 nbrdiff)))))
@@ -183,80 +179,87 @@
 
 (deftest landcover_test ; first segment -> sday 1982-12-27 bday 2001-10-04 eday 2001-09-10
                         ; last segment -> sday 2001-10-04  bday 2017-09-14 eday 2017-09-14
-  (let [segments_probabilities tr/first_segments_predictions]
+  (let [segs_probs tr/first_segments_predictions
+        first_seg (merge (first (:segments segs_probs)) {:bday "2001-09-11"})
+        last_seg (last (:segments segs_probs))
+        modded_segments (merge segs_probs {:segments [first_seg last_seg]})]
+
     ; query date precedes first segment start date and fill_begin is true
-    (is (= (:snow (:lc_map config)) (products/landcover segments_probabilities (-> "1980-01-01" (util/to-ordinal)) 0)))
+    (is (= (:snow (:lc_map config)) (products/landcover segs_probs (-> "1980-01-01" (util/to-ordinal)) 0)))
     
     ; query date precedes first segment start date
     (is (= (:lc_insuff (:lc_defaults config))
-           (products/landcover segments_probabilities (-> "1980-01-01" (util/to-ordinal)) 0 (merge config {:fill_begin false}))))
+           (products/landcover segs_probs (-> "1980-01-01" (util/to-ordinal)) 0 (merge config {:fill_begin false}))))
 
     ; query date follows last segment end date and fill_end is true
-    (is (= (:water (:lc_map config)) (products/landcover segments_probabilities (-> "2018-01-01" (util/to-ordinal)) 0)))
+    (is (= (:water (:lc_map config)) (products/landcover segs_probs (-> "2018-01-01" (util/to-ordinal)) 0)))
 
     ; query date follows last segment end date
     (is (= (:lc_insuff (:lc_defaults config))
-           (products/landcover segments_probabilities (-> "2017-10-01" (util/to-ordinal)) 0 (merge config {:fill_end false}))))
+           (products/landcover segs_probs (-> "2017-10-01" (util/to-ordinal)) 0 (merge config {:fill_end false}))))
 
     ; query date falls between a segments start and end dates
     (is (= (:water (:lc_map config))
-           (products/landcover segments_probabilities (-> "2002-01-01" (util/to-ordinal)) 0)))
+           (products/landcover segs_probs (-> "2002-01-01" (util/to-ordinal)) 0)))
 
     ; query date falls between segments of same landcover classification and fill_samelc config is true
     (is (= (:tree (:lc_map config))
            (products/landcover tr/first_segments_matching_predictions (-> "2001-09-20" (util/to-ordinal)) 0)))
 
-    (let [modded_segments {:segments [tr/first_segment_modded (last (:segments tr/first_segments_predictions))] :predictions (:predictions tr/first_segments_predictions)}]
-      ; query date falls between one segments break date and the following segments start date and fill_difflc config is true
-      (is (= (:water (:lc_map config)) 
-             (products/landcover modded_segments (-> "2001-10-03" (util/to-ordinal)) 0)))
-      ; query date falls between a segments end date and breake date and fill_difflc config is true
-      (is (= (:snow (:lc_map config)) 
-             (products/landcover modded_segments (-> "2001-09-20" (util/to-ordinal)) 0)))
-      ; as a last resort return lc_inbtw configuration value
-      (is (= (:lc_inbtw config))
-          (products/landcover modded_segments (-> "2001-09-20" (util/to-ordinal)) 0 (merge config {:fill_difflc false}))))))
+    ; query date falls between one segments break date and the following segments start date and fill_difflc config is true
+    (is (= (:water (:lc_map config)) 
+           (products/landcover modded_segments (-> "2001-10-03" (util/to-ordinal)) 0)))
+
+    ; query date falls between a segments end date and break date and fill_difflc config is true
+    (is (= (:snow (:lc_map config)) 
+           (products/landcover modded_segments (-> "2001-09-10" (util/to-ordinal)) 0)))
+
+    ; as a last resort return lc_inbtw configuration value
+    (is (= (:lc_inbtw config))
+        (products/landcover modded_segments (-> "2001-09-20" (util/to-ordinal)) 0 (merge config {:fill_difflc false})))))
 
 
 (deftest landcover_confidence_test ; first segment -> sday 1982-12-27 bday 2001-10-04 eday 2001-09-10
                                    ; last segment -> sday 2001-10-04  bday 2017-09-14 eday 2017-09-14
-  (let [segments_probabilities tr/first_segments_predictions]
+  (let [segs_probs tr/first_segments_predictions
+        segs_probs_match_preds tr/first_segments_matching_predictions
+        modded_segments (merge segs_probs {:segments [(first (:segments segs_probs))
+                                                      (merge (last (:segments segs_probs)) {:chprob 1.0})]})
+        ordinal_1995 (-> "1995-07-01" (util/to-ordinal))
+        ordinal_2001 (-> "2001-09-20" (util/to-ordinal))
+        ordinal_2017 (-> "2017-10-01" (util/to-ordinal))]
+
     ; query date precedes first segment start date and fill_begin is true
-    (is (= (:lcc_back (:lc_defaults config)) (products/confidence segments_probabilities (-> "1980-01-01" (util/to-ordinal)) 0)))
-    
-    (let [modded_segments {:segments [(first (:segments segments_probabilities))
-                                      (merge (last (:segments segments_probabilities)) {:chprob 1.0})]
-                           :predictions (:predictions segments_probabilities)}]
+    (is (= (:lcc_back (:lc_defaults config)) 
+           (products/confidence segs_probs (-> "1980-01-01" (util/to-ordinal)) 0)))
 
-      ; query date follows last segment end date and change prob is 1
-      (is (= (:lcc_afterbr (:lc_defaults config))
-             (products/confidence modded_segments (-> "2017-10-01" (util/to-ordinal)) 0))))
-
+    ; query date follows last segment end date and change prob is 1
+    (is (= (:lcc_afterbr (:lc_defaults config))
+           (products/confidence modded_segments ordinal_2017 0)))
 
      ; query date follows last segment end date and change prob is 0
     (is (= (:lcc_forwards (:lc_defaults config))
-           (products/confidence segments_probabilities (-> "2017-10-01" (util/to-ordinal)) 0)))
+           (products/confidence segs_probs ordinal_2017 0)))
 
     ; query date falls between a segments start date and end date and growth is true
     (is (= (:lcc_growth (:lc_defaults config))
-           (products/confidence segments_probabilities (-> "1995-07-01" (util/to-ordinal)) 0)))
+           (products/confidence segs_probs ordinal_1995 0)))
 
     ; query date falls between a segments start date and end date and decline is true
     (with-redefs [products/nbr (fn [i] -0.66)]
       (is (= (:lcc_decline (:lc_defaults config))
-             (products/confidence segments_probabilities (-> "1995-07-01" (util/to-ordinal)) 0))))
+             (products/confidence segs_probs ordinal_1995 0))))
 
     ; query date falls between a segments start and end date, neither growth nor decline
     (with-redefs [products/nbr (fn [i] 0.01)]
-      (is (= 8
-             (products/confidence segments_probabilities (-> "1995-07-01" (util/to-ordinal)) 0))))
+      (is (= 8 (products/confidence segs_probs ordinal_1995 0))))
 
     ; query date falls between segments of same landcover classification and fill_samelc config is true
     (is (= (:lcc_samelc (:lc_defaults config))
-           (products/confidence tr/first_segments_matching_predictions (-> "2001-09-20" (util/to-ordinal)) 0)))
+           (products/confidence segs_probs_match_preds ordinal_2001 0)))
 
     ; query date falls between segments with different landcover classifications
     (is (= (:lcc_difflc (:lc_defaults config))
-           (products/confidence segments_probabilities (-> "2001-09-20" (util/to-ordinal)) 0)))))
+           (products/confidence segs_probs ordinal_2001 0)))))
 
 
