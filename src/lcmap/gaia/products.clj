@@ -96,7 +96,7 @@
   (util/matching-keys map_a map_b :follows_bday :precedes_sday true))
 
 (defn nbr
-  "Return the Normalized Burn Ration for a segment"
+  "Return the Normalized Burn Ratio for a segment"
   [model]
   (let [sday   (-> model (:sday) (util/to-ordinal)) 
         eday   (-> model (:eday) (util/to-ordinal)) 
