@@ -17,10 +17,11 @@
 (defn -main
   ([]
    (server/run-server))
-  ([infile product queryday]
-   (let [input (file/read-json infile)
-         product_data (products/data input product queryday)
-         chipx (get (first input) "chipx")
-         chipy (get (first input) "chipy")]
+  ([segments_file  predictions_file product queryday]
+   (let [segments_input (file/read-json segments_file)
+         predictions_input (file/read-json predictions_file)
+         product_data (products/data segments_input predictions_input product queryday)
+         chipx (get (first segments_input) "cx")
+         chipy (get (first segments_input) "cy")]
      (println (json/generate-string {:x chipx :y chipy :values product_data})))))
 

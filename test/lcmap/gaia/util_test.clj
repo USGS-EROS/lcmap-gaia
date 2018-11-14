@@ -33,3 +33,21 @@
     (is (= (util/javatime-to-ordinal jt)
            726659))))
 
+(deftest matching-keys-return-collection-test
+  (let [map_a {:foo true :bar false}
+        map_b {:foo false :bar true}
+        expected_return [map_a map_b]]
+    (is (= (util/matching-keys map_a map_b :foo :bar true) expected_return))))
+
+(deftest matching-keys-return-first-map-test
+  (let [map_a {:foo true :bar false}
+        map_b {:foo false :bar true}
+        map_coll [map_a]]
+    (is (= (util/matching-keys map_coll map_b :foo :bar true) map_coll))))
+
+(deftest matching-keys-return-last-map-test
+  (let [map_a {:foo true :bar false}
+        map_b {:foo false :bar true}]
+    (is (= (util/matching-keys map_a map_b :foo :bar false) map_b))))
+
+

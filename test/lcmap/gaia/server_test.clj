@@ -5,7 +5,7 @@
             [lcmap.gaia.file   :as file]
             [lcmap.gaia.server :as server]))
 
-(def foo_data (file/read-json "resources/y3161805_x-2115585_nodates.json"))
+(def foo_data (file/read-json "resources/cx-2115585_cy3119805_segment.json"))
 
 (deftest get-product-test-invalid
   (let [response (server/get-product "foo" 111 222 "1990-07-01" {:headers {"accept" "bar"}})]
