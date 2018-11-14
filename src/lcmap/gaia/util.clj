@@ -2,6 +2,7 @@
   (:gen-class)
   (:require [java-time :as jt]
             [cheshire.core :as json]
+            [clojure.string :as string]
             [lcmap.gaia.config :refer [config]]))
 
 (def gregorian_day_one (jt/local-date 0001 1))
@@ -96,5 +97,35 @@
 
 (defn sort-by-key [coll key] (sort-by (fn [i] (get i key)) coll))
 
+(defn subtract_year
+  "Return a date string for one year prior to provided value"
+  [datestring]
+  (let [date_list (string/split datestring #"-")
+        prev_year (-> date_list (first) (bigdec) (int) (- 1))]
+    (string/join "-" [(str prev_year) (second date_list) (last date_list)])))
 
+(defn concat_ints
+  [& args]
+  (let [str_ints (map str args)
+        concated (string/join str_ints)]
+    (-> concated (bigdec) (int))))
+
+(defn scale-value
+  "Return scaling of probability into integer, with a min value of 1"
+  ([value factor]
+    (let [_prob (* value factor)]
+      (if (< _prob 1)
+        1
+        (int _prob))))
+  ([value]
+   (scale-value value 100)))
+
+(defn mean 
+  "Returns the mathematical mean value for a collection of numbers"
+  [coll]
+  (let [sum (apply + coll)
+        count (count coll)]
+    (if (pos? count)
+      (float (/ sum count)) 
+      0)))
 

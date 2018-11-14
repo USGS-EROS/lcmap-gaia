@@ -112,8 +112,8 @@
         nbr_end    (float (/ (- nir_end swir_end) (+ nir_end swir_end)))] 
     (- nbr_end nbr_start)))
 
-(defn get-class
-  "Returns the class value given a collection of probabilities"
+(defn get-class 
+ "Returns the class value given a collection of probabilities"
   ([probs rank]
    (let [sorted (reverse (sort probs)) 
          position (.indexOf probs (nth sorted rank))]
@@ -127,29 +127,13 @@
   (let [matching_predictions (filter (fn [i] (= class_val (get-class (:prob i)))) sorted_predictions)]
       (:date (first matching_predictions))))
 
-(defn mean 
-  "Returns the mathematical mean value for a collection of numbers"
-  [coll]
-  (let [sum (apply + coll)
-        count (count coll)]
-    (if (pos? count)
-      (float (/ sum count)) 
-      0)))
-
 (defn mean-probabilities
   "Returns a 1-d collection of mean probabilities given a collection of probabilities "
-  ; do this better
   [predictions]
-  (let [probabilities (map :prob predictions)]
-    [(mean (map #(nth % 0) probabilities))
-     (mean (map #(nth % 1) probabilities))
-     (mean (map #(nth % 2) probabilities))
-     (mean (map #(nth % 3) probabilities))
-     (mean (map #(nth % 4) probabilities))
-     (mean (map #(nth % 5) probabilities))
-     (mean (map #(nth % 6) probabilities))
-     (mean (map #(nth % 7) probabilities))
-     (mean (map #(nth % 8) probabilities))]))
+  (let [probabilities (map :prob predictions)
+        indexes (range 0 (count (first probabilities)))
+        mean_map_fn (fn [i] (util/mean (map #(nth % i) probabilities)))]
+    (map mean_map_fn indexes)))
 
 (defn classify
   "Return the classification value for a single segment given a query_day and rank"
@@ -259,7 +243,7 @@
 
        :else ; finally as a last resort return the lc_inbtw value from the configuration
          (:lc_inbtw conf))))
-  ([segments_probabilities query_day rank]
+  ([segments_probabilities query_day rank] ; enable passing in the configuration
    (landcover segments_probabilities query_day rank config)))
 
 (defn primary-landcover
@@ -274,13 +258,17 @@
   (let [value (landcover segments_probabilities query_day 1)]
     (hash-map :pixelx (:px pixel_coords) :pixely (:py pixel_coords) :val value)))
 
-(defn scale-probability
-  "Return scaling of probability into integer, with a min value of 1"
-  [probability]
-  (let [_prob (* probability 100)]
-    (if (< _prob 1)
-      1
-      (int _prob))))
+(defn annual-change
+  "Return the change in landcover from the provided year, to the previous year"
+  [pixel_coords segments_probabilities query_day]
+  (let [previous_query_day (util/subtract_year query_day)
+        previous_value (landcover segments_probabilities previous_query_day 0)
+        latest_value (landcover segments_probabilities query_day 0)
+        response_template (hash-map :pixelx (:px pixel_coords) :pixely (:py pixel_coords))]
+
+    (if (= previous_value latest_value)
+      (merge response_template {:val latest_value})
+      (merge response_template {:val (util/concat_ints previous_value latest_value)}))))
 
 (defn confidence
   "Return the landcover confidence value given the segments, probabilities, query_day and rank for a location"
@@ -318,7 +306,7 @@
 
       ; query date falls between a segments start date and end date
       (not (nil? intersected_segment))
-        (scale-probability (nth (:prob (last (:probabilities intersected_segment))) rank))
+        (util/scale-value (nth (:prob (last (:probabilities intersected_segment))) rank))
 
       ; query date falls between segments of same landcover classification
       (= true (= (:classification (first between_eday_sday)) (:classification (last between_eday_sday))))

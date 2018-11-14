@@ -50,4 +50,9 @@
         map_b {:foo false :bar true}]
     (is (= (util/matching-keys map_a map_b :foo :bar false) map_b))))
 
+(deftest mean_test
+  (let [coll [4 2 6 88 7]]
+    (is (= (float 21.4) (util/mean coll)))))
+
+
 
