@@ -34,3 +34,9 @@ make deps-up-d
 ```
 make runtests
 ```
+
+## Jupyter Notebook with Clojure kernel
+```
+(require '[cemerick.pomegranate :as pom])
+(pom/add-classpath "/workspace/lcmap-gaia/target/gaia-0.1.0-SNAPSHOT-standalone.jar")
+```

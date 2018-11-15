@@ -2,6 +2,7 @@
   (:gen-class)
   (:require [java-time :as jt]
             [cheshire.core :as json]
+            [clojure.string :as string]
             [lcmap.gaia.config :refer [config]]))
 
 (def gregorian_day_one (jt/local-date 0001 1))
@@ -59,15 +60,10 @@
   [coll keys]
   (group-by #(select-keys % keys) coll))
 
-(defn pixel-groups
-  [coll]
-  (coll-groups coll ["px" "py"]))
-
 (defn flatten-vals
   "Flatten the values for a collection of hash-maps"
   [coll mapkey]
-  (let [coll_vals (map (fn [i] (vals i)) coll)
-        vals_flat (flatten coll_vals)]
+  (let [vals_flat (-> coll (#(map vals %)) (flatten))]
     (map mapkey vals_flat)))
 
 (defn variable-juxt
@@ -96,5 +92,35 @@
 
 (defn sort-by-key [coll key] (sort-by (fn [i] (get i key)) coll))
 
+(defn subtract_year
+  "Return an ordinal date for one year prior to provided value"
+  [ordinal_date]
+  (let [jt_date (ordinal-to-javatime ordinal_date)
+        minus_year (jt/minus jt_date (jt/years 1))]
+    (javatime-to-ordinal minus_year)))
 
+(defn concat_ints
+  [& args]
+  (let [str_ints (map str args)
+        concated (string/join str_ints)]
+    (-> concated (bigdec) (int))))
+
+(defn scale-value
+  "Return scaling of probability into integer, with a min value of 1"
+  ([value factor]
+    (let [_prob (* value factor)]
+      (if (< _prob 1)
+        1
+        (int _prob))))
+  ([value]
+   (scale-value value 100)))
+
+(defn mean 
+  "Returns the mathematical mean value for a collection of numbers"
+  [coll]
+  (let [sum (apply + coll)
+        count (count coll)]
+    (if (pos? count)
+      (float (/ sum count)) 
+      0)))
 

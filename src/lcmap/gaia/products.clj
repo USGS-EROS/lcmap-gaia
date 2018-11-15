@@ -96,7 +96,7 @@
   (util/matching-keys map_a map_b :follows_bday :precedes_sday true))
 
 (defn nbr
-  "Return the Normalized Burn Ration for a segment"
+  "Return the Normalized Burn Ratio for a segment"
   [model]
   (let [sday   (-> model (:sday) (util/to-ordinal)) 
         eday   (-> model (:eday) (util/to-ordinal)) 
@@ -112,8 +112,8 @@
         nbr_end    (float (/ (- nir_end swir_end) (+ nir_end swir_end)))] 
     (- nbr_end nbr_start)))
 
-(defn get-class
-  "Returns the class value given a collection of probabilities"
+(defn get-class 
+ "Returns the class value given a collection of probabilities"
   ([probs rank]
    (let [sorted (reverse (sort probs)) 
          position (.indexOf probs (nth sorted rank))]
@@ -127,29 +127,13 @@
   (let [matching_predictions (filter (fn [i] (= class_val (get-class (:prob i)))) sorted_predictions)]
       (:date (first matching_predictions))))
 
-(defn mean 
-  "Returns the mathematical mean value for a collection of numbers"
-  [coll]
-  (let [sum (apply + coll)
-        count (count coll)]
-    (if (pos? count)
-      (float (/ sum count)) 
-      0)))
-
 (defn mean-probabilities
   "Returns a 1-d collection of mean probabilities given a collection of probabilities "
-  ; do this better
   [predictions]
-  (let [probabilities (map :prob predictions)]
-    [(mean (map #(nth % 0) probabilities))
-     (mean (map #(nth % 1) probabilities))
-     (mean (map #(nth % 2) probabilities))
-     (mean (map #(nth % 3) probabilities))
-     (mean (map #(nth % 4) probabilities))
-     (mean (map #(nth % 5) probabilities))
-     (mean (map #(nth % 6) probabilities))
-     (mean (map #(nth % 7) probabilities))
-     (mean (map #(nth % 8) probabilities))]))
+  (let [probabilities (map :prob predictions)
+        indexes (range 0 (count (first probabilities)))
+        mean_map_fn (fn [i] (util/mean (map #(nth % i) probabilities)))]
+    (map mean_map_fn indexes)))
 
 (defn classify
   "Return the classification value for a single segment given a query_day and rank"
@@ -259,7 +243,7 @@
 
        :else ; finally as a last resort return the lc_inbtw value from the configuration
          (:lc_inbtw conf))))
-  ([segments_probabilities query_day rank]
+  ([segments_probabilities query_day rank] ; enable passing in the configuration
    (landcover segments_probabilities query_day rank config)))
 
 (defn primary-landcover
@@ -274,13 +258,17 @@
   (let [value (landcover segments_probabilities query_day 1)]
     (hash-map :pixelx (:px pixel_coords) :pixely (:py pixel_coords) :val value)))
 
-(defn scale-probability
-  "Return scaling of probability into integer, with a min value of 1"
-  [probability]
-  (let [_prob (* probability 100)]
-    (if (< _prob 1)
-      1
-      (int _prob))))
+(defn annual-change
+  "Return the change in landcover from the provided year, to the previous year"
+  [pixel_coords segments_probabilities query_ord]
+  (let [previous_query_day (util/subtract_year query_ord)
+        previous_value (landcover segments_probabilities previous_query_day 0)
+        latest_value (landcover segments_probabilities query_ord 0)
+        response_template (hash-map :pixelx (:px pixel_coords) :pixely (:py pixel_coords))]
+
+    (if (= previous_value latest_value)
+      (merge response_template {:val latest_value})
+      (merge response_template {:val (util/concat_ints previous_value latest_value)}))))
 
 (defn confidence
   "Return the landcover confidence value given the segments, probabilities, query_day and rank for a location"
@@ -318,7 +306,7 @@
 
       ; query date falls between a segments start date and end date
       (not (nil? intersected_segment))
-        (scale-probability (nth (:prob (last (:probabilities intersected_segment))) rank))
+        (util/scale-value (nth (:prob (last (:probabilities intersected_segment))) rank))
 
       ; query date falls between segments of same landcover classification
       (= true (= (:classification (first between_eday_sday)) (:classification (last between_eday_sday))))
@@ -343,7 +331,7 @@
   (let [value (confidence segments_probabilities query_day 1)]
     (hash-map :pixelx (:px pixel_coords) :pixely (:py pixel_coords) :val value)))
 
-(defn ccdc_map
+(defn pixel_map
   "Return hash-map keyed by pixelx and pixely with a hash-map value for :segments and :predictions"
   [inputs]
   (let [pixelx      (first (:pixelxy inputs))
@@ -352,24 +340,36 @@
         predictions (get (:predictions inputs) (:pixelxy inputs))]
     (hash-map {:px pixelx :py pixely} (hash-map :segments segments :predictions predictions))))
 
-(defn data
-  "Returns a flat list of product values from JSON of a chips worth of CCDC results"
-  [segments_json predictions_json product_type queryday]
-  (let [; merge segments and predictions by px, py, cx, cy, sday and eday
-        grouped_segments    (-> ["px" "py"] (util/variable-juxt) (group-by segments_json) (keywordize-keys))
-        grouped_predictions (-> ["px" "py"] (util/variable-juxt) (group-by predictions_json) (keywordize-keys))
-        query_ord (util/to-ordinal queryday)
-        pixel_map (map #(ccdc_map {:pixelxy % :segments grouped_segments :predictions grouped_predictions}) (keys grouped_segments))
-        product_fn (-> (str "lcmap.gaia.products/" product_type) (symbol) (resolve))
-        pixel_array (map #(product_fn (-> % (keys) (first)) (-> % (vals) (first)) query_ord) pixel_map)
-        ; group product coll by row
-        ; [{:pixely 3159045} [{:pixely 3159045, :pixelx -2114775, :val 6290},...] ...]
-        row_groups (util/coll-groups pixel_array [:pixely]) 
+(defn pixel_groups
+  [injson]
+  (let [juxt_fn (util/variable-juxt ["px" "py"])
+        grouped_json (group-by juxt_fn injson)]
+    (keywordize-keys grouped_json)))
+
+(defn flatten_product_data
+  "Return a flat list of product values given a collection of hash-maps
+  for every pixel in a chip, [{:pixely 3159045, :pixelx -2114775, :val 6290},...] ...]"
+  [product_value_collection]
+  (let [; group product coll by row
+        row_groups (util/coll-groups product_value_collection [:pixely]) 
         ; sort row group values by pixelx ascending 
         sort-pixelx-fn (fn [i] (hash-map (:pixely (first i)) (sort-by :pixelx (last i))))
         sorted-x-vals (map sort-pixelx-fn row_groups)
         ; sort the rows by the pixely key ascending
-        sorted-y-rows (sort-by (fn [i] (first (keys i))) sorted-x-vals)]
-    ; finally, flatten to a one dimensional list
-    (util/flatten-vals sorted-y-rows :val)))
+        sorted-y-rows (sort-by (fn [i] (first (keys i))) sorted-x-vals)
+        ; finally, flatten to a one dimensional list
+        flattened (util/flatten-vals sorted-y-rows :val)]
+    flattened))
+
+(defn data
+  "Returns a 1-d collection of product values"
+  [segments_json predictions_json product_type queryday]
+  (let [grouped_segments    (pixel_groups segments_json) ; merge segments and predictions by px, py
+        grouped_predictions (pixel_groups predictions_json)
+        product_fn (resolve (symbol (str "lcmap.gaia.products/" product_type)))
+        query_ord (util/to-ordinal queryday)
+        xy_keys (keys grouped_segments)
+        xy_map (map #(pixel_map {:pixelxy % :segments grouped_segments :predictions grouped_predictions}) xy_keys)
+        xy_value_array (map #(product_fn (first (keys %)) (first (vals %)) query_ord) xy_map)]
+    (flatten_product_data xy_value_array)))
 
