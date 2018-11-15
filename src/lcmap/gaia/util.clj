@@ -60,15 +60,10 @@
   [coll keys]
   (group-by #(select-keys % keys) coll))
 
-(defn pixel-groups
-  [coll]
-  (coll-groups coll ["px" "py"]))
-
 (defn flatten-vals
   "Flatten the values for a collection of hash-maps"
   [coll mapkey]
-  (let [coll_vals (map (fn [i] (vals i)) coll)
-        vals_flat (flatten coll_vals)]
+  (let [vals_flat (-> coll (#(map vals %)) (flatten))]
     (map mapkey vals_flat)))
 
 (defn variable-juxt
@@ -98,11 +93,11 @@
 (defn sort-by-key [coll key] (sort-by (fn [i] (get i key)) coll))
 
 (defn subtract_year
-  "Return a date string for one year prior to provided value"
-  [datestring]
-  (let [date_list (string/split datestring #"-")
-        prev_year (-> date_list (first) (bigdec) (int) (- 1))]
-    (string/join "-" [(str prev_year) (second date_list) (last date_list)])))
+  "Return an ordinal date for one year prior to provided value"
+  [ordinal_date]
+  (let [jt_date (ordinal-to-javatime ordinal_date)
+        minus_year (jt/minus jt_date (jt/years 1))]
+    (javatime-to-ordinal minus_year)))
 
 (defn concat_ints
   [& args]

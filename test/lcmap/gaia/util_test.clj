@@ -33,6 +33,20 @@
     (is (= (util/javatime-to-ordinal jt)
            726659))))
 
+(deftest to-ordinal-test
+  (is (= 726659 (util/to-ordinal date_string))))
+
+(deftest coll-groups-test
+  (let [arbitrary_coll [{:a 1 :b 2 :c 3} {:a 1 :b 3 :c 4} {:a 2 :b 5 :c 5}]
+        response (util/coll-groups arbitrary_coll [:a])]
+    (is (= 2 (count response)))
+    (is (= 2 (count (get response {:a 1}))))))
+
+(deftest flatten-vals-test
+  (let [coll '({3116865 [{:pixely 3116865, :pixelx -2115585, :val 8} {:pixely 3116865, :pixelx -2115555, :val 9}]})
+        resp (util/flatten-vals coll :val)]
+    (is (= '(8 9) resp))))
+
 (deftest matching-keys-return-collection-test
   (let [map_a {:foo true :bar false}
         map_b {:foo false :bar true}
@@ -53,6 +67,8 @@
 (deftest mean_test
   (let [coll [4 2 6 88 7]]
     (is (= (float 21.4) (util/mean coll)))))
+
+
 
 
 

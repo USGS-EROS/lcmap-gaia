@@ -212,7 +212,10 @@
 
     ; as a last resort return lc_inbtw configuration value
     (is (= (:lc_inbtw config))
-        (products/landcover modded_segments (-> "2001-09-20" (util/to-ordinal)) 0 (merge config {:fill_difflc false})))))
+        (products/landcover modded_segments (-> "2001-09-20" (util/to-ordinal)) 0 (merge config {:fill_difflc false})))
+
+    (is (= {:pixelx 1 :pixely 2 :val 75}
+           (products/annual-change {:px 1 :py 2} segs_probs (-> "2002-01-01" (util/to-ordinal)))))))
 
 
 (deftest landcover_confidence_test ; first segment -> sday 1982-12-27 bday 2001-10-04 eday 2001-09-10

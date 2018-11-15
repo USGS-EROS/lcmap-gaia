@@ -260,10 +260,10 @@
 
 (defn annual-change
   "Return the change in landcover from the provided year, to the previous year"
-  [pixel_coords segments_probabilities query_day]
-  (let [previous_query_day (util/subtract_year query_day)
+  [pixel_coords segments_probabilities query_ord]
+  (let [previous_query_day (util/subtract_year query_ord)
         previous_value (landcover segments_probabilities previous_query_day 0)
-        latest_value (landcover segments_probabilities query_day 0)
+        latest_value (landcover segments_probabilities query_ord 0)
         response_template (hash-map :pixelx (:px pixel_coords) :pixely (:py pixel_coords))]
 
     (if (= previous_value latest_value)
@@ -331,7 +331,7 @@
   (let [value (confidence segments_probabilities query_day 1)]
     (hash-map :pixelx (:px pixel_coords) :pixely (:py pixel_coords) :val value)))
 
-(defn ccdc_map
+(defn pixel_map
   "Return hash-map keyed by pixelx and pixely with a hash-map value for :segments and :predictions"
   [inputs]
   (let [pixelx      (first (:pixelxy inputs))
@@ -340,24 +340,36 @@
         predictions (get (:predictions inputs) (:pixelxy inputs))]
     (hash-map {:px pixelx :py pixely} (hash-map :segments segments :predictions predictions))))
 
-(defn data
-  "Returns a flat list of product values from JSON of a chips worth of CCDC results"
-  [segments_json predictions_json product_type queryday]
-  (let [; merge segments and predictions by px, py, cx, cy, sday and eday
-        grouped_segments    (-> ["px" "py"] (util/variable-juxt) (group-by segments_json) (keywordize-keys))
-        grouped_predictions (-> ["px" "py"] (util/variable-juxt) (group-by predictions_json) (keywordize-keys))
-        query_ord (util/to-ordinal queryday)
-        pixel_map (map #(ccdc_map {:pixelxy % :segments grouped_segments :predictions grouped_predictions}) (keys grouped_segments))
-        product_fn (-> (str "lcmap.gaia.products/" product_type) (symbol) (resolve))
-        pixel_array (map #(product_fn (-> % (keys) (first)) (-> % (vals) (first)) query_ord) pixel_map)
-        ; group product coll by row
-        ; [{:pixely 3159045} [{:pixely 3159045, :pixelx -2114775, :val 6290},...] ...]
-        row_groups (util/coll-groups pixel_array [:pixely]) 
+(defn pixel_groups
+  [injson]
+  (let [juxt_fn (util/variable-juxt ["px" "py"])
+        grouped_json (group-by juxt_fn injson)]
+    (keywordize-keys grouped_json)))
+
+(defn flatten_product_data
+  "Return a flat list of product values given a collection of hash-maps
+  for every pixel in a chip, [{:pixely 3159045, :pixelx -2114775, :val 6290},...] ...]"
+  [product_value_collection]
+  (let [; group product coll by row
+        row_groups (util/coll-groups product_value_collection [:pixely]) 
         ; sort row group values by pixelx ascending 
         sort-pixelx-fn (fn [i] (hash-map (:pixely (first i)) (sort-by :pixelx (last i))))
         sorted-x-vals (map sort-pixelx-fn row_groups)
         ; sort the rows by the pixely key ascending
-        sorted-y-rows (sort-by (fn [i] (first (keys i))) sorted-x-vals)]
-    ; finally, flatten to a one dimensional list
-    (util/flatten-vals sorted-y-rows :val)))
+        sorted-y-rows (sort-by (fn [i] (first (keys i))) sorted-x-vals)
+        ; finally, flatten to a one dimensional list
+        flattened (util/flatten-vals sorted-y-rows :val)]
+    flattened))
+
+(defn data
+  "Returns a 1-d collection of product values"
+  [segments_json predictions_json product_type queryday]
+  (let [grouped_segments    (pixel_groups segments_json) ; merge segments and predictions by px, py
+        grouped_predictions (pixel_groups predictions_json)
+        product_fn (resolve (symbol (str "lcmap.gaia.products/" product_type)))
+        query_ord (util/to-ordinal queryday)
+        xy_keys (keys grouped_segments)
+        xy_map (map #(pixel_map {:pixelxy % :segments grouped_segments :predictions grouped_predictions}) xy_keys)
+        xy_value_array (map #(product_fn (first (keys %)) (first (vals %)) query_ord) xy_map)]
+    (flatten_product_data xy_value_array)))
 
