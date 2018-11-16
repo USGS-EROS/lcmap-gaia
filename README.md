@@ -1,3 +1,5 @@
+[![Build Status](https://travis-ci.org/USGS-EROS/lcmap-gaia.svg?branch=develop)](https://travis-ci.org/USGS-EROS/lcmap-gaia)
+
 # Gaia
 
 Gaia provides Change and Classification product calculation from CCDC results.
