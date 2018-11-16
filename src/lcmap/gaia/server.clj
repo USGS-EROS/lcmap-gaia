@@ -7,7 +7,7 @@
             [ring.util.response :as ring-response]
             [org.httpkit.client :as http]
             [org.httpkit.server :as http-server]
-            [lcmap.gaia.ccdc :as ccdc]
+            [lcmap.gaia.nemo :as nemo]
             [lcmap.gaia.file :as file]
             [lcmap.gaia.products :as products]
             [lcmap.gaia.util :as util]))
@@ -24,7 +24,7 @@
 (defmethod get-product "application/json"
   ;; FIXME dual input for product_values !!
   [product_type x y query_day request]
-  (let [input (ccdc/results x y) 
+  (let [input (nemo/results x y) 
         product_values (products/data input input product_type query_day)]
     {:status 200 :body {"x" x "y" y "values" product_values}}))
 

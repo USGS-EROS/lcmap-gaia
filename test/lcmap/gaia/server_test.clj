@@ -1,7 +1,7 @@
 (ns lcmap.gaia.server-test
   (:require [clojure.test :refer :all]
             [clojure.string :as string]
-            [lcmap.gaia.ccdc   :as ccdc]
+            [lcmap.gaia.nemo   :as nemo]
             [lcmap.gaia.file   :as file]
             [lcmap.gaia.server :as server]))
 
@@ -13,7 +13,7 @@
     (is (string/includes? (:body response) "please define a valid Accept header"))))
 
 (deftest get-product-test-valid
-  (with-redefs [ccdc/results (fn [x y] foo_data)]
+  (with-redefs [nemo/results (fn [x y] foo_data)]
     (let [response (server/get-product "time-since-change" 111 222 "1990-07-01" {:headers {"accept" "application/json"}})
           response_body_keys (set (keys (:body response)))]
       (is (= response_body_keys (set '("x" "y" "values"))))

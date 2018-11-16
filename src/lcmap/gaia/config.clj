@@ -20,8 +20,9 @@
              :none    (or (try-read (:lc-none    environ/env)) 0)))
 
 (def config
-  {:nemo_host      (:nemo-host environ/env)
-   :nemo_resource  (or (:nemo-resource environ/env) "/data")
+  {:nemo_host        (:nemo-host environ/env)
+   :segments_path    (:segments-path environ/env)
+   :predictions_path (:predictions-path environ/env)
    :fill_begin     (or (try-read (:fill-begin     environ/env)) true)
    :fill_end       (or (try-read (:fill-end       environ/env)) true)
    :fill_samelc    (or (try-read (:fill-samelc    environ/env)) true)
