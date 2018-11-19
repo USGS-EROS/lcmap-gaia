@@ -10,7 +10,8 @@
             [lcmap.gaia.nemo :as nemo]
             [lcmap.gaia.file :as file]
             [lcmap.gaia.products :as products]
-            [lcmap.gaia.util :as util]))
+            [lcmap.gaia.util :as util]
+            [lcmap.gaia.config :refer [config]]))
 
 
 (defmulti get-product
@@ -30,18 +31,20 @@
 (defn get-products
   [request]
   {:status 200 :body ["curve-fit" "time-of-change" "time-since-change" 
-                      "magnitude-of-change" "length-of-segment"]})
+                      "magnitude-of-change" "length-of-segment" "primary-landcover"
+                      "secondary-landcover" "primary-landcover-confidence" 
+                      "secondary-landcover-confidence" "annual-change"]})
 
 (defn healthy
   "Hello Gaia"
   [request]
-  {:status 200 :body "OK"})
+  {:status 200 :body {"message" "OK"}})
 
 (compojure/defroutes routes
   (compojure/context "/" request
                      (route/resources "/")
                      (compojure/GET "/" [] (healthy request))
-                     (compojure/GET "/available-products" [] (get-products))
+                     (compojure/GET "/available-products" [] (get-products request))
                      (compojure/GET "/product/:product_type/:x/:y/:query_day" [product_type x y query_day] (get-product product_type x y query_day request))))
 
 (defn response-handler
@@ -56,4 +59,4 @@
 
 (defn run-server
   []
- (http-server/run-server app {:port 9876}))
+ (http-server/run-server app {:port (:http_port config)}))

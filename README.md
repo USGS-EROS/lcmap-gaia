@@ -11,16 +11,25 @@ Use it to retrieve the change and classification product values for a given area
 Gaia is run as a Docker container. 
 
 ```
-docker run -p 9876:9876 -e NEMO_HOST=${NEMO_HOST} \
-                        -it usgseros/lcmap-gaia:latest
+export NEMO_HOST="http://awesomehost.org/nemo"
+export SEGMENTS_PATH="/conus_segments"
+export PREDICTIONS_PATH="/conus_predictions"
+export HTTP_PORT=9876
+
+docker run -p 9876:${HTTP_PORT} -e NEMO_HOST=${NEMO_HOST} \
+                                -e SEGMENTS_PATH=${SEGMENTS_PATH} \
+                                -e PREDICTIONS_PATH=${PREDICTIONS_PATH} \
+                                -e HTTP_PORT=${HTTP_PORT} \
+                                -it usgseros/lcmap-gaia:latest
 ```
 
 Gaia is configured using these environment variables:
 
-| ENV             | Description                          |
-|-----------------|--------------------------------------|
-| `NEMO_HOST`     | base url for lcmap-nemo resource     |
-
+| ENV                | Description                          |
+|--------------------|--------------------------------------|
+| `NEMO_HOST`        | base url for lcmap-nemo resource     |
+| `SEGMENTS_PATH`    | resource path for segments data      |
+| `PREDICTIONS_PATH` | resource path for prediction data    |
 
 ## Running a local Gaia
 

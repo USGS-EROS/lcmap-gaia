@@ -23,6 +23,7 @@
   {:nemo_host        (:nemo-host environ/env)
    :segments_path    (:segments-path environ/env)
    :predictions_path (:predictions-path environ/env)
+   :http_port      (or (try-read (:http-port environ/env)) 9876)
    :fill_begin     (or (try-read (:fill-begin     environ/env)) true)
    :fill_end       (or (try-read (:fill-end       environ/env)) true)
    :fill_samelc    (or (try-read (:fill-samelc    environ/env)) true)

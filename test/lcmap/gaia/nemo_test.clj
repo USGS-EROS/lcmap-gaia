@@ -19,7 +19,6 @@
                    {:url faux_nemo_predictions_url :method :get} {:status 200 :body "{\"xxx\":\"yyy\"}"}]
     (with-redefs [config/config faux_config]
       (let [results (nemo/results 999 666)]
-        (println (str "results: " results))
         (is (= {:segments {"xxx" "yyy"}, :predictions {"xxx" "yyy"}} results))))))
 
 (deftest test-results-bad

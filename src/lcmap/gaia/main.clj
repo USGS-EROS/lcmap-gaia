@@ -16,6 +16,8 @@
 
 (defn -main
   ([]
+   (log/infof "Configuration: NEMO-HOST - %s \n SEGMENTS-PATH - %s \n PREDICTIONS-PATH - %s \n"
+              (:nemo_host config) (:segments_path config) (:predictions_path config)) 
    (server/run-server))
   ([segments_file  predictions_file product queryday]
    (let [segments_input (file/read-json segments_file)
