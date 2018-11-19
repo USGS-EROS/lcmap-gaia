@@ -72,12 +72,6 @@
         expected [map_a map_b]]
     (is (= (products/falls-between-eday-sday map_a map_b) expected))))
 
-(deftest falls_between_eday_sday-coll-test
-  (let [map_a {:follows_eday true :precedes_sday false}
-        map_b {:precedes_sday true :follows_eday false}
-        expected [map_a map_b]]
-    (is (= (products/falls-between-eday-sday map_a map_b) expected))))
-
 (deftest falls_between_eday_sday-map-test
   (let [map_a {:follows_eday false :precedes_sday true}
         map_b {:precedes_sday true :follows_eday false}]
@@ -260,5 +254,34 @@
     ; query date falls between segments with different landcover classifications
     (is (= (:lcc_difflc (:lc_defaults config))
            (products/confidence segs_probs ordinal_2001 0)))))
+
+(deftest pixel_map_test
+  (let [inmap {:pixelxy [1 2] :segments {[1 2] [:a :b :c]} :predictions {[1 2] [:d :e :f]}}]
+    (is (= (products/pixel_map inmap) {{:px 1 :py 2} {:segments [:a :b :c] :predictions [:d :e :f]}}))))
+
+(deftest pixel_groups_test
+  (let [inmaps [{"px" 1 "py" 2 "foo" "bar"} {"px" 1 "py" 2 "foo" "too"} 
+                {"px" 3 "py" 4 "foo" "shizzle"} {"px" 3 "py" 4 "foo" "baz"}]
+        value (products/pixel_groups inmaps)] 
+    (is (= (count value) 2))
+    (is (= (keys value) '([1 2] [3 4])))))
+
+(deftest flatten_product_data_test
+  ; lower left pixel value should be the first item in returned collection
+  (let [input [{:pixely 3159045, :pixelx -2114775, :val 2} ; lower left
+               {:pixely 3159045, :pixelx -2114745, :val 4} ; lower right
+               {:pixely 3159075, :pixelx -2114775, :val 6} ; upper left
+               {:pixely 3159075, :pixelx -2114745, :val 8} ; upper right
+               ]]
+    (is (= (products/flatten_product_data input)
+           [2 4 6 8]))))
+
+(deftest data_test
+  (let [segs  (:segments tr/first_segments_predictions)  
+        preds (:predictions tr/first_segments_predictions)
+        product "time-since-change"
+        query_day "2006-07-01"
+        result (products/data segs preds product query_day)]
+    (is (= '(1731) result))))
 
 

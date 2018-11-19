@@ -71,14 +71,6 @@
   [mapkeys]
   (apply juxt (map (fn [i] #(get % i)) mapkeys)))
 
-(defn merge-maps-by-keys
-  "Merge two lists of hash-maps, joining the list members by the key values
-   specified in the mapkeys argument"
-  [maplist1 maplist2 mapkeys]
-  (let [conc_lists (concat maplist1 maplist2)
-        grouped_lists (group-by (variable-juxt mapkeys) conc_lists)]
-    (map #(merge (first %) (last %)) (vals grouped_lists))))
-
 (defn matching-keys
   "Return a collection of the map arguments if the key values equal the 
    desired match value, else return map_b. Used in a call to reduce for
@@ -96,8 +88,9 @@
   "Return an ordinal date for one year prior to provided value"
   [ordinal_date]
   (let [jt_date (ordinal-to-javatime ordinal_date)
-        minus_year (jt/minus jt_date (jt/years 1))]
-    (javatime-to-ordinal minus_year)))
+        minus_year (jt/minus jt_date (jt/years 1))   ; if jt_date is July 1, minus_year will be June 30th
+        plus_day   (jt/plus minus_year (jt/days 1))] ; add day to get to July 1
+    (javatime-to-ordinal plus_day)))
 
 (defn concat_ints
   [& args]

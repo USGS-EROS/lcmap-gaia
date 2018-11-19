@@ -47,6 +47,14 @@
         resp (util/flatten-vals coll :val)]
     (is (= '(8 9) resp))))
 
+(deftest variable-juxt-test
+  (let [juxt_fn (util/variable-juxt ["px" "py"])
+        maps [{"px" 1 "py" 2 "foo" "bar"} {"px" 1 "py" 2 "foo" "too"} 
+              {"px" 3 "py" 4 "foo" "shizzle"} {"px" 3 "py" 4 "foo" "baz"}]
+        grouped (group-by juxt_fn maps)]
+    (is (= (count grouped) 2))
+    (is (= (keys grouped) '([1 2] [3 4])))))
+
 (deftest matching-keys-return-collection-test
   (let [map_a {:foo true :bar false}
         map_b {:foo false :bar true}
@@ -63,6 +71,23 @@
   (let [map_a {:foo true :bar false}
         map_b {:foo false :bar true}]
     (is (= (util/matching-keys map_a map_b :foo :bar false) map_b))))
+
+(deftest sort-by-key-test
+  (let [maps [{:sday 5 :foo "a"} {:sday 3 :foo "c"} {:sday 2 :foo "e"} {:sday 6 :foo "z"}]]
+    (is (= [{:sday 2 :foo "e"} {:sday 3 :foo "c"} {:sday 5 :foo "a"} {:sday 6 :foo "z"}]
+           (util/sort-by-key maps :sday)))))
+
+(deftest subtract-year-test
+  (let [od1 (util/to-ordinal "1980-04-27")
+        od2 (util/to-ordinal "1979-04-27")]
+    (is (= od2 (util/subtract_year od1)))))
+
+(deftest concat-ints-test
+  (is (= (util/concat_ints 3 4) 34)))
+
+(deftest scale-value-test
+  (is (= (util/scale-value 0.09) 9))
+  (is (= (util/scale-value 0.001) 1)))
 
 (deftest mean_test
   (let [coll [4 2 6 88 7]]

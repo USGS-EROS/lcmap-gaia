@@ -5,7 +5,9 @@
             [lcmap.gaia.file   :as file]
             [lcmap.gaia.server :as server]))
 
-(def foo_data (file/read-json "resources/cx-2115585_cy3119805_segment.json"))
+(def segment_json (file/read-json "resources/cx-2115585_cy3119805_segment.json"))
+(def prediction_json (file/read-json "resources/cx-2115585_cy3119805_prediction_with_fake_date.json"))
+(def foo_data {:segments segment_json :predictions prediction_json})
 
 (deftest get-product-test-invalid
   (let [response (server/get-product "foo" 111 222 "1990-07-01" {:headers {"accept" "bar"}})]
@@ -19,6 +21,11 @@
       (is (= response_body_keys (set '("x" "y" "values"))))
       (is (= 200 (:status response)))
       (is (= 10000 (count (get (:body response) "values")))))))
+
+(deftest get-products-test
+  (let [response (server/get-products {:foo "bar"})]
+    (is (= response {:status 200 :body ["curve-fit" "time-of-change" "time-since-change" 
+                      "magnitude-of-change" "length-of-segment"]}))))
 
 (deftest healthy-test
   (let [response (server/healthy {})]

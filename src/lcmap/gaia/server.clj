@@ -22,10 +22,9 @@
   {:status 406 :body "please define a valid Accept header of either 'application/json' or..."})
 
 (defmethod get-product "application/json"
-  ;; FIXME dual input for product_values !!
   [product_type x y query_day request]
   (let [input (nemo/results x y) 
-        product_values (products/data input input product_type query_day)]
+        product_values (products/data (:segments input) (:predictions input) product_type query_day)]
     {:status 200 :body {"x" x "y" y "values" product_values}}))
 
 (defn get-products
