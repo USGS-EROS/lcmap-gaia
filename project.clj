@@ -7,6 +7,11 @@
                  [org.clojure/core.async    "0.3.443"]
                  [org.clojure/math.numeric-tower "0.0.4"]
                  [org.clojure/tools.logging "0.4.0"]
+                 [org.slf4j/slf4j-log4j12 "1.7.21"]
+                 [log4j/log4j "1.2.17" :exclusions [javax.mail/mail
+                                                    javax.jms/jms
+                                                    com.sun.jmdk/jmxtools
+                                                    com.sun.jmx/jmxri]]
                  [cheshire                  "5.8.0"]
                  [clojure.java-time         "0.3.2"]
                  [compojure                 "1.6.1"]

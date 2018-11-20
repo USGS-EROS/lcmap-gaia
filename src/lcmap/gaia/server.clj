@@ -1,5 +1,6 @@
 (ns lcmap.gaia.server
-  (:require [compojure.core :as compojure]
+  (:require [clojure.tools.logging :as log]
+            [compojure.core :as compojure]
             [compojure.route :as route]
             [ring.middleware.json :as ring-json]
             [ring.middleware.keyword-params :as ring-keyword-params]
@@ -13,9 +14,11 @@
             [lcmap.gaia.util :as util]
             [lcmap.gaia.config :refer [config]]))
 
-
 (defmulti get-product
-  (fn [_p _q _x _y request] (-> request (:headers) (get "accept"))))
+  (fn [_p _x _y _q request] 
+    (log/debugf "GET product request: \nproduct - %s \nx - %s y - %s
+                 \nquery day %s \nheaders %s" _p _x _y _q (:headers request))
+    (-> request (:headers) (get "accept"))))
 
 (defmethod get-product :default
   [product_type x y query_day request]
@@ -26,14 +29,17 @@
   [product_type x y query_day request]
   (let [input (nemo/results x y) 
         product_values (products/data (:segments input) (:predictions input) product_type query_day)]
-    {:status 200 :body {"x" x "y" y "values" product_values}}))
+    {:status 200 :body {"x" (read-string x) "y" (read-string y) "values" product_values}}))
 
 (defn get-products
   [request]
-  {:status 200 :body ["curve-fit" "time-of-change" "time-since-change" 
-                      "magnitude-of-change" "length-of-segment" "primary-landcover"
-                      "secondary-landcover" "primary-landcover-confidence" 
-                      "secondary-landcover-confidence" "annual-change"]})
+  {:status 200 :body ["annual-change" "curve-fit" "length-of-segment"  "magnitude-of-change" 
+                      "primary-landcover" "primary-landcover-confidence" "secondary-landcover"  
+                      "secondary-landcover-confidence" "time-of-change" "time-since-change"]})
+
+(defn get-configuration
+  [request]
+  {:status 200 :body config})
 
 (defn healthy
   "Hello Gaia"
@@ -45,6 +51,7 @@
                      (route/resources "/")
                      (compojure/GET "/" [] (healthy request))
                      (compojure/GET "/available-products" [] (get-products request))
+                     (compojure/GET "/configuration" [] (get-configuration request))
                      (compojure/GET "/product/:product_type/:x/:y/:query_day" [product_type x y query_day] (get-product product_type x y query_day request))))
 
 (defn response-handler
