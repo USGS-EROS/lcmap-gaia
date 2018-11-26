@@ -31,19 +31,26 @@ Gaia is configured using these environment variables:
 | `SEGMENTS_PATH`    | resource path for segments data      |
 | `PREDICTIONS_PATH` | resource path for prediction data    |
 
+
 ## Running a local Gaia
 
-Start backing services, and add seed data 
+Using docker-compose, build a container to provide sample json, and a gaia instance
 
 ```
-make deps-up-d
-```
+docker-compose -f resources/docker-compose.yml up
 
+```
 
 ## Running tests
 
 ```
-make runtests
+lein test
+```
+
+## Requesting products using HTTPie https://httpie.org
+```
+http GET  localhost:9876/product/time-since-change/-2115585/3119805/1996-07-01 Accept:application/json > time_since_change.json
+
 ```
 
 ## Jupyter Notebook with Clojure kernel
