@@ -8,4 +8,4 @@ before_install:
 - lein deps 
 - lein test
 after_success:
-- "/bin/true"
+- "./bin/build"
