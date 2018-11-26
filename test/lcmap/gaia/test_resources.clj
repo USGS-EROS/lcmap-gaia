@@ -12,8 +12,11 @@
 
 (def query_ord (util/to-ordinal "2006-07-01"))
 
-(def grouped_segments    (-> ["px" "py"] (util/variable-juxt) (group-by (file/read-json "resources/cx-2115585_cy3119805_segment.json")) (keywordize-keys)))
-(def grouped_predictions (-> ["px" "py"] (util/variable-juxt) (group-by  (file/read-json "resources/cx-2115585_cy3119805_prediction_with_fake_date.json")) (keywordize-keys)))
+(def segments_json (file/read-json "resources/cx-2115585_cy3119805_segment.json"))
+(def predictions_json (file/read-json "resources/cx-2115585_cy3119805_prediction_with_fake_date.json"))
+
+(def grouped_segments    (-> ["px" "py"] (util/variable-juxt) (group-by segments_json) (keywordize-keys)))
+(def grouped_predictions (-> ["px" "py"] (util/variable-juxt) (group-by predictions_json) (keywordize-keys)))
 (def pixel_map (map #(ccdc_map {:pixelxy % :segments grouped_segments :predictions grouped_predictions}) (keys grouped_segments)))
 
 (def first_segments_predictions (-> (first pixel_map) (vals) (first)))
