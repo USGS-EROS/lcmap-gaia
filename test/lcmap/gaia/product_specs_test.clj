@@ -12,7 +12,10 @@
 
 (deftest predictions_check_test
   (let [good_prediction (keywordize-keys (first tr/predictions_json))
-        bad_prediction (conj good_prediction {:prob "not probabilities"})]
+        bad_prediction_prob (conj good_prediction {:prob "not probabilities"})
+        bad_prediction_coord (conj good_prediction {:cx 123})]
     (is (= good_prediction (product-specs/predictions_check good_prediction)))
-    (is (thrown-with-msg? Exception #"Validation Error" (product-specs/predictions_check bad_prediction)))))
+    (is (thrown-with-msg? Exception #"Validation Error" (product-specs/predictions_check bad_prediction_prob)))
+    (is (thrown-with-msg? Exception #"Validation Error" (product-specs/predictions_check bad_prediction_coord)))
+))
 

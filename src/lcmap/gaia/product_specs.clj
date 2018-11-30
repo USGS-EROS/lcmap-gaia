@@ -2,12 +2,17 @@
   (:require [clojure.spec.alpha :as spec]
             [lcmap.gaia.validation :as validation]))
 
-(spec/def ::days string?)
+
 (spec/def ::intr float?)
 (spec/def ::magr float?)
 (spec/def ::rmsr float?)
 (spec/def ::coefr coll?)
-(spec/def ::coord integer?)
+
+(spec/def ::coord_bounds #(or (< -9999999 % -1000000) (> 9999999 % 1000000)))
+(spec/def ::coord (spec/and integer? ::coord_bounds))
+
+(spec/def ::day_fmt #(some? (re-matches #"[0-9]{4}-[0-9]{2}-[0-9]{2}" %)))
+(spec/def ::days (spec/and string? ::day_fmt))
 
 ; segments predicates
 (spec/def ::px ::coord)
@@ -54,7 +59,10 @@
 ; predictions predicates
 (spec/def ::cx ::coord)
 (spec/def ::cy ::coord)
-(spec/def ::prob coll?)
+(spec/def ::doubles (spec/coll-of double?))
+(spec/def ::count_nine #(= 9 (count %)))
+(spec/def ::prob (spec/and ::count_nine ::doubles))
+(spec/def ::date ::days)
 (spec/def ::prediction (spec/keys :req-un [::cx ::cy ::px ::py ::sday ::eday ::date ::prob]))
 
 (defn get-spec-problems
