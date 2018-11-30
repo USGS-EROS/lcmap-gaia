@@ -6,7 +6,10 @@
 (spec/def ::intr float?)
 (spec/def ::magr float?)
 (spec/def ::rmsr float?)
-(spec/def ::coefr coll?)
+
+(spec/def ::count_seven #(=  (count %)))
+(spec/def ::doubles (spec/coll-of double?))
+(spec/def ::coefr (spec/and ::doubles ::count_seven))
 
 (spec/def ::coord_bounds #(or (< -9999999 % -1000000) (> 9999999 % 1000000)))
 (spec/def ::coord (spec/and integer? ::coord_bounds))
@@ -59,7 +62,7 @@
 ; predictions predicates
 (spec/def ::cx ::coord)
 (spec/def ::cy ::coord)
-(spec/def ::doubles (spec/coll-of double?))
+
 (spec/def ::count_nine #(= 9 (count %)))
 (spec/def ::prob (spec/and ::count_nine ::doubles))
 (spec/def ::date ::days)
