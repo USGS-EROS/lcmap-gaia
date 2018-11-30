@@ -260,8 +260,8 @@
     (is (= (products/pixel_map inmap) {{:px 1 :py 2} {:segments [:a :b :c] :predictions [:d :e :f]}}))))
 
 (deftest pixel_groups_test
-  (let [inmaps [{"px" 1 "py" 2 "foo" "bar"} {"px" 1 "py" 2 "foo" "too"} 
-                {"px" 3 "py" 4 "foo" "shizzle"} {"px" 3 "py" 4 "foo" "baz"}]
+  (let [inmaps [{:px 1 :py 2 :foo "bar"} {:px 1 :py 2 :foo "too"} 
+                {:px 3 :py 4 :foo "shizzle"} {:px 3 :py 4 :foo "baz"}]
         value (products/pixel_groups inmaps)] 
     (is (= (count value) 2))
     (is (= (keys value) '([1 2] [3 4])))))

@@ -6,7 +6,8 @@
             [clojure.walk          :refer [keywordize-keys]]
             [lcmap.gaia.file       :as file]
             [lcmap.gaia.util       :as util]
-            [lcmap.gaia.config     :refer [config]]))
+            [lcmap.gaia.config     :refer [config]]
+            [lcmap.gaia.product-specs :as product-specs]))
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;;;;;;;;;;;;;;;    CHANGE PRODUCTS    ;;;;;;;;;;;;;;;;;
@@ -342,9 +343,8 @@
 
 (defn pixel_groups
   [injson]
-  (let [juxt_fn (util/variable-juxt ["px" "py"])
-        grouped_json (group-by juxt_fn injson)]
-    (keywordize-keys grouped_json)))
+  (let [juxt_fn (util/variable-juxt [:px :py])]
+    (group-by juxt_fn injson)))
 
 (defn flatten_product_data
   "Return a flat list of product values given a collection of hash-maps
@@ -364,12 +364,12 @@
 (defn data
   "Returns a 1-d collection of product values"
   [segments_json predictions_json product_type queryday]
-  (let [grouped_segments    (pixel_groups segments_json) ; merge segments and predictions by px, py
-        grouped_predictions (pixel_groups predictions_json)
+  (let [segments    (-> segments_json    (keywordize-keys) (product-specs/segment_coll_check)    (pixel_groups))
+        predictions (-> predictions_json (keywordize-keys) (product-specs/prediction_coll_check) (pixel_groups))
         product_fn (resolve (symbol (str "lcmap.gaia.products/" product_type)))
         query_ord (util/to-ordinal queryday)
-        xy_keys (keys grouped_segments)
-        xy_map (map #(pixel_map {:pixelxy % :segments grouped_segments :predictions grouped_predictions}) xy_keys)
-        xy_value_array (map #(product_fn (first (keys %)) (first (vals %)) query_ord) xy_map)]
+        xy_keys (keys segments)
+        xy_coll (map #(pixel_map {:pixelxy % :segments segments :predictions predictions}) xy_keys)
+        xy_value_array (map #(product_fn (first (keys %)) (first (vals %)) query_ord) xy_coll)]
     (flatten_product_data xy_value_array)))
 
