@@ -58,6 +58,7 @@
                                         ::blmag  ::grmag  ::nimag  ::remag  ::s1mag  ::s2mag  ::thmag
                                         ::blrmse ::grrmse ::nirmse ::rermse ::s1rmse ::s2rmse ::thrmse
                                         ::blcoef ::grcoef ::nicoef ::recoef ::s1coef ::s2coef ::thcoef]))
+(spec/def ::segments (spec/coll-of ::segment))
 
 ; predictions predicates
 (spec/def ::cx ::coord)
@@ -67,6 +68,7 @@
 (spec/def ::prob (spec/and ::count_nine ::doubles))
 (spec/def ::date ::days)
 (spec/def ::prediction (spec/keys :req-un [::cx ::cy ::px ::py ::sday ::eday ::date ::prob]))
+(spec/def ::predictions (spec/coll-of ::prediction))
 
 (defn get-spec-problems
   [explain_data]
@@ -82,10 +84,19 @@
                (throw))
       (spec/conform spec params)))
 
-(defn segments_check
+(defn segment_check
   [segment]
   (check! ::segment segment {:type :segment-exception :cause :validation-failure}))
 
-(defn predictions_check
+(defn prediction_check
   [prediction]
   (check! ::prediction prediction {:type :prediction-exception :cause :validation-failure}))
+
+(defn segment_coll_check
+  [segments]
+  (check! ::segments segments {:type :segments-exception :cause :validation-failure}))
+
+(defn prediction_coll_check
+  [predictions]
+  (check! ::predictions predictions {:type :predictions-exception :cause :validation-failure}))
+
