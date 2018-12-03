@@ -17,7 +17,7 @@
   (let [type_name (keyword (str product_name "-exception"))
         message (str "Error calculating " product_name)]
     (log/errorf (str message exception))
-    (throw (ex-info message {:type type_name :cause :product-exception :exception exception}))))
+    (throw (ex-info message {:type type_name :cause :product-failure :exception exception}))))
 
 (defn time-of-change
   "Return numeric day of year in which a break occurs"

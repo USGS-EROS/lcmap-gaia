@@ -14,19 +14,25 @@
 ;; if no changes are detected, a result is 
 ;; returned with an sday and eday == 0
 
+(defn stderr
+  [message]
+  (.println *err* message))
+
+(defn stdout
+  [message]
+  (.println *out* message))
+
 (defn -main
   ([]
-   (log/infof "\n Configuration:
-               \n NEMO-HOST - %s 
-               \n SEGMENTS-PATH - %s 
-               \n PREDICTIONS-PATH - %s \n"
-              (:nemo_host config) (:segments_path config) (:predictions_path config)) 
    (server/run-server))
   ([segments_file  predictions_file product queryday]
-   (let [segments_input (file/read-json segments_file)
-         predictions_input (file/read-json predictions_file)
-         product_data (products/data segments_input predictions_input product queryday)
-         chipx (get (first segments_input) "cx")
-         chipy (get (first segments_input) "cy")]
-     (println (json/generate-string {:x chipx :y chipy :values product_data})))))
+   (try
+     (let [segments_input (file/read-json segments_file)
+           predictions_input (file/read-json predictions_file)
+           product_data (products/data segments_input predictions_input product queryday)
+           chipx (get (first segments_input) "cx")
+           chipy (get (first segments_input) "cy")]
+       (stdout (json/generate-string {:x chipx :y chipy :values product_data})))
+     (catch Exception e
+       (stderr (str "Error encountered processing request. ex-data " (ex-data e) "\n full exception: " e))))))
 
