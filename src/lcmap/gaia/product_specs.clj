@@ -2,12 +2,11 @@
   (:require [clojure.spec.alpha :as spec]
             [lcmap.gaia.validation :as validation]))
 
-
 (spec/def ::intr float?)
 (spec/def ::magr float?)
 (spec/def ::rmsr float?)
 
-(spec/def ::count_seven #(=  (count %)))
+(spec/def ::count_seven #(= 7 (count %)))
 (spec/def ::doubles (spec/coll-of double?))
 (spec/def ::coefr (spec/and ::doubles ::count_seven))
 
@@ -70,6 +69,12 @@
 (spec/def ::prediction (spec/keys :req-un [::cx ::cy ::px ::py ::sday ::eday ::date ::prob]))
 (spec/def ::predictions (spec/coll-of ::prediction))
 
+(spec/def ::product_type #(contains? #{"annual-change" "curve-fit" "length-of-segment"  "magnitude-of-change" 
+                                       "primary-landcover" "primary-landcover-confidence" "secondary-landcover"  
+                                       "secondary-landcover-confidence" "time-of-change" "time-since-change"} %))
+
+(spec/def ::count_ten_thousand #(= 10000 (count %)))
+
 (defn get-spec-problems
   [explain_data]
   (first (:clojure.spec.alpha/problems explain_data)))
@@ -100,3 +105,14 @@
   [predictions]
   (check! ::predictions predictions {:type :predictions-exception :cause :validation-failure}))
 
+(defn product_type_check
+  [product_type]
+  (check! ::product_type product_type {:type :product-type-exception :cause :validation-failure}))
+
+(defn date_fmt_check
+  [date_str]
+  (check! ::days date_str {:type :date-format-exception :cause :validation-failure}))
+
+(defn output_check
+  [output_values]
+  (check! ::count_ten_thousand output_values {:type :output-size-exception :cause :data-failure}))

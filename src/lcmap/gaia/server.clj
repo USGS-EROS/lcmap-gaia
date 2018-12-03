@@ -27,9 +27,16 @@
 
 (defmethod get-product "application/json"
   [product_type x y query_day request]
-  (let [input (nemo/results x y) 
-        product_values (products/data (:segments input) (:predictions input) product_type query_day)]
-    {:status 200 :body {"x" (read-string x) "y" (read-string y) "values" product_values}}))
+  (try
+    (let [input (nemo/results x y) 
+          product_values (products/data (:segments input) (:predictions input) product_type query_day)]
+      {:status 200 :body {"x" (read-string x) "y" (read-string y) "values" product_values}})
+    (catch Exception e
+      (if (= :validation-failure (-> e ex-data :cause))
+        (do (log/errorf "input validation problem: %s" (ex-data e))
+            {:status 400 :body "Invalid Data"})
+        (do (log/errorf "Exception encountered handling get-product request: %s" (ex-data e))
+            {:status 500 :body "Error handling request"})))))
 
 (defn get-products
   [request]
