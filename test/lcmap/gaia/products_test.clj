@@ -260,8 +260,8 @@
     (is (= (products/pixel_map inmap) {{:px 1 :py 2} {:segments [:a :b :c] :predictions [:d :e :f]}}))))
 
 (deftest pixel_groups_test
-  (let [inmaps [{"px" 1 "py" 2 "foo" "bar"} {"px" 1 "py" 2 "foo" "too"} 
-                {"px" 3 "py" 4 "foo" "shizzle"} {"px" 3 "py" 4 "foo" "baz"}]
+  (let [inmaps [{:px 1 :py 2 :foo "bar"} {:px 1 :py 2 :foo "too"} 
+                {:px 3 :py 4 :foo "shizzle"} {:px 3 :py 4 :foo "baz"}]
         value (products/pixel_groups inmaps)] 
     (is (= (count value) 2))
     (is (= (keys value) '([1 2] [3 4])))))
@@ -277,11 +277,15 @@
            [2 4 6 8]))))
 
 (deftest data_test
-  (let [segs  (:segments tr/first_segments_predictions)  
-        preds (:predictions tr/first_segments_predictions)
+  (let [segs  tr/segments_json    ;(:segments tr/first_segments_predictions)  
+        preds tr/predictions_json ;(:predictions tr/first_segments_predictions)
+        first_seg (:segments tr/first_segments_predictions)
+        first_pred (:predictions tr/first_segments_predictions)
         product "time-since-change"
         query_day "2006-07-01"
         result (products/data segs preds product query_day)]
-    (is (= '(1731) result))))
+    (is (= 643 (nth result 5)))
+    ; products/data should throw an exception when its output is too small
+    (is (thrown-with-msg? Exception #"Validation Error" (products/data first_seg first_pred product query_day)))))
 
 
