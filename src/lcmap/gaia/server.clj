@@ -32,11 +32,16 @@
           product_values (products/data (:segments input) (:predictions input) product_type query_day)]
       {:status 200 :body {"x" (read-string x) "y" (read-string y) "values" product_values}})
     (catch Exception e
-      (if (= :validation-failure (-> e ex-data :cause))
-        (do (log/errorf "input validation problem: %s" (ex-data e))
-            {:status 400 :body "Invalid Input Data"})
-        (do (log/errorf "Exception encountered handling get-product request: %s" (ex-data e))
-            {:status 500 :body "Error handling request"})))))
+      (cond 
+        (= :data-failure (-> e ex-data :cause))
+          (do (log/errorf "data request problem: %s" (ex-data e))
+              {:status 500 :body "Unable to retrieve input data"})
+        (= :validation-failure (-> e ex-data :cause))
+          (do (log/errorf "input validation problem: %s" (ex-data e))
+              {:status 400 :body "Invalid input data"})
+        :else
+          (do (log/errorf "Exception encountered handling get-product request: %s" (ex-data e))
+              {:status 500 :body "Error handling request"})))))
 
 (defn get-products
   [request]

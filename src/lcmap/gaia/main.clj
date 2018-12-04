@@ -34,5 +34,6 @@
            chipy (get (first segments_input) "cy")]
        (stdout (json/generate-string {:x chipx :y chipy :values product_data})))
      (catch Exception e
-       (stderr (str "Error encountered processing request. ex-data " (ex-data e) "\n full exception: " e))))))
+       (stderr (str "Error encountered processing request. ex-data " (ex-data e)))
+       (stderr (str "exception: " e))))))
 

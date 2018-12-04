@@ -25,5 +25,4 @@
   (with-fake-http [{:url faux_nemo_segments_url :method :get} {:status 500 :body nil}
                    {:url faux_nemo_predictions_url :method :get} {:status 404 :body "err"}]
     (with-redefs [config/config faux_config]
-      (let [results (nemo/results 999 666)]
-        (is (= false results))))))
+      (is (thrown-with-msg? Exception #"Nemo Error" (nemo/results 999 666))))))
