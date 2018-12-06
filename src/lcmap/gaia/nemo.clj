@@ -6,7 +6,7 @@
 
 (defn results_url
   ([x y host path]
-   (str host path "?chipx=" x "&chipy=" y))
+   (str host path "?cx=" x "&cy=" y))
   ([x y path]
    (results_url x y (:nemo_host config) path)))
 
