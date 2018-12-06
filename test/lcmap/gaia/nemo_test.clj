@@ -6,8 +6,8 @@
             [org.httpkit.client :as http]))
 
 (def faux_config {:nemo_host "http://nemo-host.org" :segments_path "/segments" :predictions_path "/predictions"})
-(def faux_nemo_segments_url "http://nemo-host.org/segments?chipx=999&chipy=666")
-(def faux_nemo_predictions_url "http://nemo-host.org/predictions?chipx=999&chipy=666")
+(def faux_nemo_segments_url "http://nemo-host.org/segments?cx=999&cy=666")
+(def faux_nemo_predictions_url "http://nemo-host.org/predictions?cx=999&cy=666")
 
 (deftest test-results_url
   (with-redefs [config/config faux_config]
