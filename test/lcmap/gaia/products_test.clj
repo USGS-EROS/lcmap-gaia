@@ -282,10 +282,14 @@
         first_seg (:segments tr/first_segments_predictions)
         first_pred (:predictions tr/first_segments_predictions)
         product "time-since-change"
-        query_day "2006-07-01"
-        result (products/data segs preds product query_day)]
-    (is (= 643 (nth result 5)))
+        query_day "2006-07-01"]
+    ; requesting a change product with segments and predictions is valid
+    (is (= 643 (nth (products/data segs preds product query_day) 5)))
     ; products/data should throw an exception when its output is too small
-    (is (thrown-with-msg? Exception #"Validation Error" (products/data first_seg first_pred product query_day)))))
+    (is (thrown-with-msg? Exception #"Validation Error" (products/data first_seg first_pred product query_day)))
+    ; requesting a landcover product with no predictions should throw an exception
+    (is (thrown-with-msg? Exception #"Error calculating landcover" (products/data segs [] "primary-landcover" query_day)))
+    ; requesting a change product with no predictions is valid
+    (is (= 643 (nth (products/data segs [] product query_day) 5)))))
 
 
