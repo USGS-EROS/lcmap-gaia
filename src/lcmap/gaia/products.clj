@@ -385,7 +385,7 @@
         sort-pixelx-fn (fn [i] (hash-map (:pixely (first i)) (sort-by :pixelx (last i))))
         sorted-x-vals (map sort-pixelx-fn row_groups)
         ; sort the rows by the pixely key ascending
-        sorted-y-rows (sort-by (fn [i] (first (keys i))) sorted-x-vals)
+        sorted-y-rows (sort-by (fn [i] (first (keys i))) > sorted-x-vals)
         ; finally, flatten to a one dimensional list
         flattened (util/flatten-vals sorted-y-rows :val)]
     flattened))

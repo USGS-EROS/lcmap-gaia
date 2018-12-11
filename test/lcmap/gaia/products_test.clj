@@ -274,7 +274,7 @@
                {:pixely 3159075, :pixelx -2114745, :val 8} ; upper right
                ]]
     (is (= (products/flatten_product_data input)
-           [2 4 6 8]))))
+           [6 8 2 4]))))
 
 (deftest data_test
   (let [segs  tr/segments_json    ;(:segments tr/first_segments_predictions)  
@@ -284,12 +284,12 @@
         product "time-since-change"
         query_day "2006-07-01"]
     ; requesting a change product with segments and predictions is valid
-    (is (= 643 (nth (products/data segs preds product query_day) 5)))
+    (is (= 2915 (nth (products/data segs preds product query_day) 5)))
     ; products/data should throw an exception when its output is too small
     (is (thrown-with-msg? Exception #"Validation Error" (products/data first_seg first_pred product query_day)))
     ; requesting a landcover product with no predictions should throw an exception
     (is (thrown-with-msg? Exception #"Error calculating landcover" (products/data segs [] "primary-landcover" query_day)))
     ; requesting a change product with no predictions is valid
-    (is (= 643 (nth (products/data segs [] product query_day) 5)))))
+    (is (= 2915 (nth (products/data segs [] product query_day) 5)))))
 
 
