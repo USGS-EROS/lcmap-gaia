@@ -16,11 +16,12 @@
 
 (defn stderr
   [message]
-  (.println *err* message))
+  (binding [*out* *err*]
+    (println message)))
 
 (defn stdout
   [message]
-  (.println *out* message))
+  (println message))
 
 (defn -main
   ([]
