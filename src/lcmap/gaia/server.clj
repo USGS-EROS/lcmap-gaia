@@ -62,7 +62,7 @@
   (compojure/context "/" request
                      (route/resources "/")
                      (compojure/GET "/" [] (healthy request))
-                     (compojure/GET "/available-products" [] (get-products request))
+                     (compojure/GET "/available_products" [] (get-products request))
                      (compojure/GET "/configuration" [] (get-configuration request))
                      (compojure/GET "/product/:product_type/:x/:y/:query_day" [product_type x y query_day] (get-product product_type x y query_day request))))
 
