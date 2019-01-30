@@ -13,7 +13,8 @@
             [lcmap.gaia.products :as products]
             [lcmap.gaia.util :as util]
             [lcmap.gaia.config :refer [config]]
-            [lcmap.gaia.raster :as raster]))
+            [lcmap.gaia.raster :as raster]
+            [lcmap.gaia.storage :as storage]))
 
 (defmulti get-product
   (fn [_p _x _y _q request] 
@@ -68,11 +69,17 @@
 ;:chipx 1631415.0, :tiley 1964805.0, :tilex 1484415.0, :product "tsc", :years "2006"}
 (defn products
   [{:keys [body] :as req}]
-  (let [{:keys [dates chipx chipy tilex tiley product]} body]
+  (let [{:keys [dates chipx chipy tilex tiley product]} body
+        input (nemo/results tilex tiley)
+        segments (:segments input)
+        predictions (:predictions input)]
+    ;; iterate through dates calculating product values for the chip
+    (doseq [query_day dates
+            :let [values (products/data segments predictions product query_day)
+                  out_name (util/product-output-name product chipx chipy query_day)]]
+      (storage/save_json out_name values))
     (log/infof "chipx: %s  chipy: %s  dates: %s" chipx chipy dates)
-    {:status 200 :body {"message" product}}
-    )
-)
+    {:status 200 :body {"message" product}}))
 
 (compojure/defroutes routes
   (compojure/context "/" request

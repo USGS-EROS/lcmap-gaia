@@ -17,3 +17,7 @@
 (defn drop_file
   [filename bucket]
   true)
+
+(defn save_json
+  [filename data]
+  (spit filename data))
