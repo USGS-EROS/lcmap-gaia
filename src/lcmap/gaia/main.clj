@@ -26,7 +26,7 @@
 (defn -main
   ([]
    (server/run-server))
-  ([segments_file  predictions_file product queryday]
+  ([segments_file predictions_file product queryday]
    (try
      (let [segments_input (file/read-json segments_file)
            predictions_input (file/read-json predictions_file)

@@ -25,7 +25,9 @@
                  [ring/ring-defaults        "0.3.1"]
                  [ring/ring-json            "0.4.0"]
                  [ring/ring-jetty-adapter   "1.6.3"]
-                 [ring/ring-mock            "0.3.2"]]
+                 [ring/ring-mock            "0.3.2"]
+                 [org.gdal/gdal             "2.2.0"]
+                 [mount                     "0.1.12"]]
 
   :plugins [[lein-environ "1.1.0"]]
   :profiles {:dev     {:dependencies [[org.clojure/test.check "0.9.0"]]}

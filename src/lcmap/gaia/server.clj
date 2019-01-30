@@ -12,7 +12,8 @@
             [lcmap.gaia.file :as file]
             [lcmap.gaia.products :as products]
             [lcmap.gaia.util :as util]
-            [lcmap.gaia.config :refer [config]]))
+            [lcmap.gaia.config :refer [config]]
+            [lcmap.gaia.raster :as raster]))
 
 (defmulti get-product
   (fn [_p _x _y _q request] 
@@ -58,13 +59,29 @@
   [request]
   {:status 200 :body {"message" "OK"}})
 
+(defn create-product
+  [product_type tileid years request]
+  (raster/create-geotiff)
+)
+
+; {:tile "027009", :dates ["2006-07-01"], :chipy 1817805.0, :grid "conus", 
+;:chipx 1631415.0, :tiley 1964805.0, :tilex 1484415.0, :product "tsc", :years "2006"}
+(defn products
+  [{:keys [body] :as req}]
+  (let [{:keys [dates chipx chipy tilex tiley product]} body]
+    (log/infof "chipx: %s  chipy: %s  dates: %s" chipx chipy dates)
+    {:status 200 :body {"message" product}}
+    )
+)
+
 (compojure/defroutes routes
   (compojure/context "/" request
                      (route/resources "/")
                      (compojure/GET "/" [] (healthy request))
                      (compojure/GET "/available_products" [] (get-products request))
                      (compojure/GET "/configuration" [] (get-configuration request))
-                     (compojure/GET "/product/:product_type/:x/:y/:query_day" [product_type x y query_day] (get-product product_type x y query_day request))))
+                     (compojure/GET "/product" [product_type x y query_day] (get-product product_type x y query_day request))
+                     (compojure/POST "/products" [] (products request))))
 
 (defn response-handler
   [routes]
@@ -72,8 +89,8 @@
       (ring-json/wrap-json-body {:keywords? true})
       (ring-json/wrap-json-response)
       (ring-defaults/wrap-defaults ring-defaults/api-defaults)
-      (ring-keyword-params/wrap-keyword-params)))
-
+      (ring-keyword-params/wrap-keyword-params))
+)
 (def app (response-handler routes))
 
 (defn run-server
