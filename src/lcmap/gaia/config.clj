@@ -23,6 +23,7 @@
   {:nemo_host        (:nemo-host environ/env)
    :segments_path    (:segments-path environ/env)
    :predictions_path (:predictions-path environ/env)
+   :output_path    (or (try-read (:output-path environ/env)) "tmp/")
    :http_port      (or (try-read (:http-port environ/env)) 9876)
    :query_day      (or (:query-day environ/env) "07-01")
    :fill_begin     (or (try-read (:fill-begin     environ/env)) true)

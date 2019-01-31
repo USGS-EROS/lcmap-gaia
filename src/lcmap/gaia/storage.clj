@@ -20,4 +20,5 @@
 
 (defn save_json
   [filename data]
-  (spit filename data))
+  (let [output (str (:output_path config) filename)]
+    (spit output data)))

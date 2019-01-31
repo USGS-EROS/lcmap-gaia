@@ -14,7 +14,8 @@
             [lcmap.gaia.util :as util]
             [lcmap.gaia.config :refer [config]]
             [lcmap.gaia.raster :as raster]
-            [lcmap.gaia.storage :as storage]))
+            [lcmap.gaia.storage :as storage]
+            [cheshire.core :as json]))
 
 (defmulti get-product
   (fn [_p _x _y _q request] 
@@ -60,24 +61,35 @@
   [request]
   {:status 200 :body {"message" "OK"}})
 
-(defn create-product
-  [product_type tileid years request]
-  (raster/create-geotiff)
+(defn product-maps
+  [{:keys [body] :as req}]
+  (log/infof "/maps request ")
+  (let [{:keys [date tile tilex tiley chips product]} body]
+    (log/infof "tile: %s" tile)
+    (log/infof "chips: %s " (count chips))
+    {:status 200 :body {"message" product}}
+    )
+
+
+
+
+ ; [product_type tileid years request]
+ ; (raster/create-geotiff)
 )
 
-; {:tile "027009", :dates ["2006-07-01"], :chipy 1817805.0, :grid "conus", 
-;:chipx 1631415.0, :tiley 1964805.0, :tilex 1484415.0, :product "tsc", :years "2006"}
 (defn products
   [{:keys [body] :as req}]
-  (let [{:keys [dates chipx chipy tilex tiley product]} body
-        input (nemo/results tilex tiley)
+  (log/infof "/products request body: %s" body)
+  (let [{:keys [dates chipx chipy product]} body
+        input (nemo/results chipx chipy)
         segments (:segments input)
         predictions (:predictions input)]
     ;; iterate through dates calculating product values for the chip
     (doseq [query_day dates
-            :let [values (products/data segments predictions product query_day)
-                  out_name (util/product-output-name product chipx chipy query_day)]]
-      (storage/save_json out_name values))
+            :let [values (products/data segments predictions product query_day) 
+                  out_name (util/product-output-name product chipx chipy query_day)
+                  out_data (json/encode {"x" chipx "y" chipy "values" values})]]
+      (storage/save_json out_name out_data))
     (log/infof "chipx: %s  chipy: %s  dates: %s" chipx chipy dates)
     {:status 200 :body {"message" product}}))
 
@@ -88,7 +100,8 @@
                      (compojure/GET "/available_products" [] (get-products request))
                      (compojure/GET "/configuration" [] (get-configuration request))
                      (compojure/GET "/product" [product_type x y query_day] (get-product product_type x y query_day request))
-                     (compojure/POST "/products" [] (products request))))
+                     (compojure/POST "/products" [] (products request))
+                     (compojure/POST "/maps" [] (product-maps request))))
 
 (defn response-handler
   [routes]
