@@ -72,21 +72,6 @@
 )
 
 (defn persist-product
-  [product chipx chipy data query_day]
-  (try
-    (let [segments (:segments data)
-          predictions (:predictions data)
-          values (products/data segments predictions product query_day) 
-          out_name (util/product-output-name product chipx chipy query_day)
-          out_data (json/encode {"x" chipx "y" chipy "values" values})]
-
-      (storage/save_json out_name out_data)
-      {:chipx chipx :chipy chipy :date query_day :status "success"})
-
-    (catch Exception e (log/errorf "Exception persist-product: %s" e)
-           {:chipx chipx :chipy chipy :date query_day :status "fail"})))
-
-(defn persist-product2
   [product chipxy dates]
   (try
     (log/infof "working on chip: %s" chipxy)
@@ -110,24 +95,9 @@
 
 (defn products
   [{:keys [body] :as req}]
-  (log/infof "/products PMAP request body: %s" body)
-  (let [{:keys [dates chipx chipy product]} body
-        input (nemo/results chipx chipy)
-        persist #(persist-product product chipx chipy input %)
-        results (pmap persist dates)
-        failures (filter (fn [i] (= "fail" (:status i))) results)]
-
-    (if (true? (empty? failures))
-      {:status 200 :body {:product product :chipx chipx :chipy chipy}}
-      {:status 400 :body {:failed failures}}
-      )))
-
-(defn products2
-  [{:keys [body] :as req}]
   (log/infof "/products2 request body: %s" body)
   (let [{:keys [dates chips product]} body
-        ;input (nemo/results chipx chipy)
-        persist #(persist-product2 product % dates)
+        persist #(persist-product product % dates)
         results (pmap persist chips)
         failures (filter (fn [i] (= "fail" (:status i))) results)]
 
@@ -143,7 +113,7 @@
                      (compojure/GET "/available_products" [] (get-products request))
                      (compojure/GET "/configuration" [] (get-configuration request))
                      (compojure/GET "/product" [product_type x y query_day] (get-product product_type x y query_day request))
-                     (compojure/POST "/products" [] (products2 request))
+                     (compojure/POST "/products" [] (products request))
                      (compojure/POST "/maps" [] (product-maps request))))
 
 (defn response-handler

@@ -1,5 +1,7 @@
 (ns lcmap.gaia.storage
-  (:require [lcmap.gaia.config :refer [config]]
+  (:require [clojure.tools.logging :as log]
+            [lcmap.gaia.config :refer [config]]
+            [cheshire.core :as json]
             [amazonica.aws.s3 :as s3]))
 
 (def client-config
@@ -9,20 +11,41 @@
    :client-config {:path-style-access-enabled true}})
 
 (defn list_buckets
-  []
-  (s3/list-buckets client-config))
+  ([cfg]
+   (let [objects (s3/list-buckets cfg)]
+     (map :name objects)))
+  ([]
+   (list_buckets client-config)))
+
+(defn list_bucket_contents
+  [bucketname]
+  (let [objects (s3/list-objects-v2 client-config :bucket-name bucketname)
+        summaries (:object-summaries objects)]
+    (map :key summaries)))
 
 (defn create_bucket
-  [name]
-  true)
+  [bucketname]
+  (s3/create-bucket client-config bucketname))
 
-(defn add_file
-  [filename bucket]
-  true)
+(defn put_json
+  [bucketname keyname data]
+  (let [encoded_data (json/encode data)
+        byte_data (-> encoded_data (.getBytes) (java.io.ByteArrayInputStream.))]
+    (try
+      (s3/put-object client-config :bucket-name bucketname :key keyname :input-stream byte_data)
+      true
+      (catch Exception e (log/errorf "Error putting data to object store: %s" e)
+        false))))
 
-(defn drop_file
-  [filename bucket]
-  true)
+(defn drop_json
+  [bucketname keyname]
+  (s3/delete-object :bucket-name bucketname :key keyname))
+
+(defn get_json
+  [bucket filename]
+  (let [s3object (s3/get-object client-config :bucket-name bucket :key filename)
+        s3content (clojure.java.io/reader (:object-content s3object))]
+    (json/parse-stream s3content)))
 
 (defn save_json
   [filename data]
@@ -30,20 +53,4 @@
     (spit output data)))
 
 
-;; s3test.core=> (def x (assoc cred :client-config {:path-style-access-enabled true}))
-;; #'s3test.core/x
-;; s3test.core=> (s3/list-buckets x)
-;; [{:creation-date #object[org.joda.time.DateTime 0x224b55a0 "2018-12-17T08:06:24.547-06:00"], :owner {:display-name "cgaustin", :id "cgaustin"}, :name "clayfoo"}]
-;; s3test.core=> 
 
-
-;; s3test.core=> (s3/create-bucket x "jack")
-;; {:name "jack"}
-;; s3test.core=> (s3/list-buckets x)
-
-
-;; s3test.core=> (def upload-file (java.io.File. "upload.txt"))
-;; #'s3test.core/upload-file
-;; s3test.core=> (spit upload-file "hello world")
-;; nil
-;; s3test.core=> (s3/put-object x :bucket-name "jack" :key "jenny" :file upload-file)
