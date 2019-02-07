@@ -72,7 +72,7 @@
 )
 
 (defn persist-product
-  [product chipxy dates]
+  [product chipxy dates tile]
   (try
     (log/infof "working on chip: %s" chipxy)
     (doseq [query_day dates
@@ -83,10 +83,10 @@
                   predictions (:predictions data)
                   values (products/data segments predictions product query_day) 
                   out_name (util/product-output-name product chipx chipy query_day)
-                  out_data (json/encode {"x" chipx "y" chipy "values" values})]]
+                  out_data {"x" chipx "y" chipy "values" values}]]
 
       (log/infof "storing chip: %s" chipxy)
-      (storage/save_json out_name out_data)
+      (storage/put_json tile out_name out_data)
       {:chipx chipx :chipy chipy :date query_day :status "success"})
 
     (catch Exception e (log/errorf "Exception persist-product: %s" e)
@@ -96,8 +96,9 @@
 (defn products
   [{:keys [body] :as req}]
   (log/infof "/products2 request body: %s" body)
-  (let [{:keys [dates chips product]} body
-        persist #(persist-product product % dates)
+  (let [{:keys [dates chips product tile]} body
+        __ (storage/create_bucket tile)
+        persist #(persist-product product % dates tile)
         results (pmap persist chips)
         failures (filter (fn [i] (= "fail" (:status i))) results)]
 
