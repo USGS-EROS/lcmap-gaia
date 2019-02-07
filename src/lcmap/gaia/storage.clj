@@ -39,7 +39,11 @@
 
 (defn drop_json
   [bucketname keyname]
-  (s3/delete-object :bucket-name bucketname :key keyname))
+  (s3/delete-object client-config :bucket-name bucketname :key keyname))
+
+(defn drop_bucket
+  [bucketname]
+  (s3/delete-bucket client-config :bucket-name bucketname))
 
 (defn get_json
   [bucket filename]
