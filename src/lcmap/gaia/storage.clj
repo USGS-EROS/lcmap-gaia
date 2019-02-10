@@ -47,9 +47,13 @@
 
 (defn get_json
   [bucket filename]
-  (let [s3object (s3/get-object client-config :bucket-name bucket :key filename)
-        s3content (clojure.java.io/reader (:object-content s3object))]
-    (json/parse-stream s3content)))
+  (log/infof "get_json request for bucket: %s  and file: %s" bucket filename)
+  (try
+    (let [s3object (s3/get-object client-config :bucket-name bucket :key filename)
+          s3content (clojure.java.io/reader (:object-content s3object))]
+      (json/parse-stream s3content))
+    (catch Exception e (log/errorf "Error retrieving data from object store: %s" e)
+        false)))
 
 (defn save_json
   [filename data]

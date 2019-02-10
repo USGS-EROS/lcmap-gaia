@@ -20,7 +20,7 @@
         y_diff (- tile_y chip_y)
         x_offset (/ x_diff meters_per_pixel)
         y_offset (/ y_diff meters_per_pixel)]
-    [x_offset y_offset]))
+    [(int x_offset) (int y_offset)]))
 
 (defn create_blank_tile_tiff
   [name ulx uly projection]

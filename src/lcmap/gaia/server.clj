@@ -66,10 +66,15 @@
             :let [cx (:cx chip)
                   cy (:cy chip)
                   chip_name (util/product-output-name product cx cy date)
-                  chip_data (storage/get_json tile name)
-                  ]]
-      (raster/add_chip_to_tile tile_name chip_data tilex tiley cx cy)
+                  chip_data (storage/get_json tile chip_name)]]
+      (log/infof "adding %s to tile: %s" chip_name tile)
+      (if chip_data
+        (raster/add_chip_to_tile tile_name (get chip_data "values") tilex tiley cx cy)
+        (log/warnf "no data to add to tile %s at cx: %s | cy: %s" tile cx cy)
+        )
+      
       )
+    (log/infof "done adding data to tile_name: %s" tile_name)
 
     ; when complete, store tiff in object store
     ; remove tiff from local tmp dir
