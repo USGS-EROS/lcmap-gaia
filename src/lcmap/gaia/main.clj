@@ -1,8 +1,10 @@
 (ns lcmap.gaia.main
   (:gen-class)
-  (:require [clojure.tools.logging :as log]
+  (:require [mount.core            :as mount]
+            [clojure.tools.logging :as log]
             [cheshire.core         :as json]
             [lcmap.gaia.config     :refer [config]]
+            [lcmap.gaia.gdal       :as gdal]
             [lcmap.gaia.file       :as file]
             [lcmap.gaia.products   :as products]
             [lcmap.gaia.server     :as server]))
@@ -25,6 +27,7 @@
 
 (defn -main
   ([]
+   (mount/start)
    (server/run-server))
   ([segments_file predictions_file product queryday]
    (try

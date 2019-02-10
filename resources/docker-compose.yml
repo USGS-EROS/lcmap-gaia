@@ -19,3 +19,6 @@ services:
       - PREDICTIONS_PATH=/predictions
       - HTTP_PORT=9876
 
+
+# s3 server for storage interaction testing
+# https://hub.docker.com/r/scality/s3server/
