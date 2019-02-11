@@ -74,6 +74,7 @@
         )
       
       )
+    (storage/put_tiff tile tile_name tile_name)
     (log/infof "done adding data to tile_name: %s" tile_name)
 
     ; when complete, store tiff in object store

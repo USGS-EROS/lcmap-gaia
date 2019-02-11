@@ -2,7 +2,8 @@
   (:require [clojure.tools.logging :as log]
             [lcmap.gaia.config :refer [config]]
             [cheshire.core :as json]
-            [amazonica.aws.s3 :as s3]))
+            [amazonica.aws.s3 :as s3]
+            [java-time :as jt]))
 
 (def client-config
   {:access-key (:s3-access-key config)
@@ -37,6 +38,15 @@
       (catch Exception e (log/errorf "Error putting data to object store: %s" e)
         false))))
 
+(defn put_tiff
+  [bucketname keyname fpath]
+  (let [jfile (java.io.File. fpath)]
+    (try
+      (s3/put-object client-config :bucket-name bucketname :key keyname :file jfile)
+      true
+      (catch Exception e (log/errorf "Error putting data to object store: %s" e)
+        false))))
+
 (defn drop_json
   [bucketname keyname]
   (s3/delete-object client-config :bucket-name bucketname :key keyname))
@@ -55,10 +65,16 @@
     (catch Exception e (log/errorf "Error retrieving data from object store: %s" e)
         false)))
 
+(defn get_url
+  ([bucketname filename expire]
+   (.toString (s3/generate-presigned-url client-config bucketname filename expire)))
+  ([bucketname filename]
+   (let [today (jt/local-date)
+         tomorrow (jt/plus today (jt/days 1))]
+     (get_url bucketname filename tomorrow))))
+
 (defn save_json
   [filename data]
   (let [output (str (:output_path config) filename)]
     (spit output data)))
-
-
 
