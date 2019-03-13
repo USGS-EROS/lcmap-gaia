@@ -4,10 +4,34 @@
             [clojure.string        :as string]
             [clojure.math.numeric-tower :as math]
             [clojure.walk          :refer [keywordize-keys]]
+            [java-time             :as jt]
             [lcmap.gaia.file       :as file]
             [lcmap.gaia.util       :as util]
             [lcmap.gaia.config     :refer [config]]
             [lcmap.gaia.product-specs :as product-specs]))
+
+(def product_abbreviations
+  (hash-map "primary-landcover"              "LCPRI"
+            "secondary-landcover"            "LCSEC"
+            "primary-landcover-confidence"   "LCPCONF"
+            "secondary-landcover-confidence" "LCSCONF"
+            "annual-change"                  "LCACHG"
+            "time-of-change"                 "SCTIME"
+            "magnitude-of-change"            "SCMAG"
+            "time-since-change"              "SCLAST"
+            "magnitude-of-change"            "SCMQA"
+            "length-of-segment"              "SCSTAB"))
+
+(defn name
+  [tileid product date]
+  ; LCMAP_<grid>_<6digit tileid>_<representative year>_<production date>_<CCDC version>_<product abbr>
+  (let [grid      (:region config)
+        repr_year (first (string/split date #"-"))
+        prod_date (string/replace (str (jt/local-date)) "-" "")
+        ccd_ver   (:ccd_ver config)
+        product_abbr (get product_abbreviations product)
+        elements ["LCMAP" grid tileid repr_year prod_date ccd_ver product_abbr]]
+    (str (string/join "-" elements) ".tif")))
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;;;;;;;;;;;;;;;    CHANGE PRODUCTS    ;;;;;;;;;;;;;;;;;
