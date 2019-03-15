@@ -14,6 +14,8 @@ Gaia is run as a Docker container.
 export NEMO_HOST="http://awesomehost.org/nemo"
 export SEGMENTS_PATH="/conus_segments"
 export PREDICTIONS_PATH="/conus_predictions"
+export REGION="cu"
+export CCD_VERSION="v01"
 export HTTP_PORT=9876
 
 docker run -p 9876:${HTTP_PORT} -e NEMO_HOST=${NEMO_HOST} \
@@ -30,6 +32,9 @@ Gaia is configured using these environment variables:
 | `NEMO_HOST`        | base url for lcmap-nemo resource     |
 | `SEGMENTS_PATH`    | resource path for segments data      |
 | `PREDICTIONS_PATH` | resource path for prediction data    |
+| `REGION`           | region abbreviation (cu, ak, hi)     |
+| `CCD_VERSION`      | version of ccd algorithm used to     |
+|                    | generate input data                  |
 
 
 ## Running a local Gaia
