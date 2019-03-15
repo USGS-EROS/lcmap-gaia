@@ -31,9 +31,11 @@
 (defn put_json
   [bucketname keyname data]
   (let [encoded_data (json/encode data)
-        byte_data (-> encoded_data (.getBytes) (java.io.ByteArrayInputStream.))]
+        byte_data (.getBytes encoded_data)
+        byte_stream (java.io.ByteArrayInputStream. byte_data)
+        metadata {:content-length (count byte_data)}]
     (try
-      (s3/put-object client-config :bucket-name bucketname :key keyname :input-stream byte_data)
+      (s3/put-object client-config :bucket-name bucketname :key keyname :input-stream byte_stream :metadata metadata)
       true
       (catch Exception e (log/errorf "Error putting data to object store: %s" e)
         false))))
@@ -57,12 +59,12 @@
 
 (defn get_json
   [bucket filename]
-  (log/infof "get_json request for bucket: %s  and file: %s" bucket filename)
+  ;(log/infof "get_json request for bucket: %s  and file: %s" bucket filename)
   (try
-    (let [s3object (s3/get-object client-config :bucket-name bucket :key filename)
+    (let [s3object (s3/get-object client-config :bucket-name bucket :key filename) ; need to add a :prefix modeling ard storage on hsm
           s3content (clojure.java.io/reader (:object-content s3object))]
       (json/parse-stream s3content))
-    (catch Exception e (log/errorf "Error retrieving data from object store: %s" e)
+    (catch Exception e ;(log/errorf "Error retrieving data from object store: %s" e)
         false)))
 
 (defn get_url
@@ -72,9 +74,4 @@
    (let [today (jt/local-date)
          tomorrow (jt/plus today (jt/days 1))]
      (get_url bucketname filename tomorrow))))
-
-(defn save_json
-  [filename data]
-  (let [output (str (:output_path config) filename)]
-    (spit output data)))
 

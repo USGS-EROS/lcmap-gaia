@@ -20,7 +20,9 @@
              :none    (or (try-read (:lc-none    environ/env)) 0)))
 
 (def config
-  {:nemo_host        (:nemo-host environ/env)
+  {:region           (:region environ/env)
+   :ccd_ver          (:ccd-version environ/env)
+   :nemo_host        (:nemo-host environ/env)
    :segments_path    (:segments-path environ/env)
    :predictions_path (:predictions-path environ/env)
    :s3-access-key    (:s3-access-key environ/env)

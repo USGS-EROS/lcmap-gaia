@@ -15,8 +15,7 @@
             [lcmap.gaia.config :refer [config]]
             [lcmap.gaia.raster :as raster]
             [lcmap.gaia.storage :as storage]
-            [cheshire.core :as json]
-            ))
+            [cheshire.core :as json]))
 
 (defn healthy
   "Hello Gaia"
@@ -33,92 +32,60 @@
   [request]
   {:status 200 :body config})
 
-(defn get-product
-  [product_type x y query_day request]
-  (try
-    (let [input (nemo/results x y) 
-          product_values (products/data (:segments input) (:predictions input) product_type query_day)]
-      {:status 200 :body {"x" (read-string x) "y" (read-string y) "values" product_values}})
-    (catch Exception e
-      (cond 
-        (= :data-failure (-> e ex-data :cause))
-          (do (log/errorf "data request problem: %s" (ex-data e))
-              {:status 500 :body "Unable to retrieve input data"})
-        (= :validation-failure (-> e ex-data :cause))
-          (do (log/errorf "input validation problem: %s" (ex-data e))
-              {:status 400 :body "Invalid input data"})
-        :else
-          (do (log/errorf "Exception encountered handling get-product request: %s" (ex-data e))
-              {:status 500 :body "Error handling request"})))))
-
 (defn product-maps
   [{:keys [body] :as req}]
-  (let [{:keys [date tile tilex tiley chips product]} body
-        tile_name (str tile "_" product "_" date ".tif")
-        projection (util/get-projection)]
-    (log/infof "/maps request -- tile: %s | tilex: %s | tiley: %s | chip count: %s | date: %s | product: %s" 
-               tile tilex tiley (count chips) date product)
-    ; create blank tile tiff. in local tmp dir?
-    (raster/create_blank_tile_tiff tile_name tilex tiley projection)
-    ; loop through coordinate pairs, calculating chip tiff name, checking for existence, and grabbing values
-    ; when available, update tiff in local tmp dir
-    (doseq [chip chips
-            :let [cx (:cx chip)
-                  cy (:cy chip)
-                  chip_name (util/product-output-name product cx cy date)
-                  chip_data (storage/get_json tile chip_name)]]
-      (log/infof "adding %s to tile: %s" chip_name tile)
-      (if chip_data
-        (raster/add_chip_to_tile tile_name (get chip_data "values") tilex tiley cx cy)
-        (log/warnf "no data to add to tile %s at cx: %s | cy: %s" tile cx cy)
-        )
-      
-      )
-    (storage/put_tiff tile tile_name tile_name)
-    (log/infof "done adding data to tile_name: %s" tile_name)
-
-    ; when complete, store tiff in object store
-    ; remove tiff from local tmp dir
-
-
-
-    {:status 200 :body {"message" product}}
-    )
-)
+  (try
+    (let [{:keys [date tile tilex tiley chips product]} body
+          map_name (products/map-name tile product date)
+          projection (util/get-projection)]
+      (raster/create_blank_tile_tiff map_name tilex tiley projection)
+      (doseq [chip chips
+              :let [cx (:cx chip)
+                    cy (:cy chip)
+                    chip_name (util/product-output-name product cx cy date)
+                    chip_data (storage/get_json tile chip_name)]]
+        (log/debugf "adding %s to tile: %s" chip_name tile)
+        (if chip_data
+          (raster/add_chip_to_tile map_name (get chip_data "values") tilex tiley cx cy)
+          (log/debugf "no data to add to tile %s at cx: %s | cy: %s" tile cx cy)))
+      (storage/put_tiff tile map_name map_name)
+      (log/infof "done adding data to map_name: %s" map_name)
+      {:status 200 :body (assoc (dissoc body :chips) :map_name map_name)})
+    (catch Exception e
+      (log/errorf "Exception in product-maps: %s" (ex-data e))
+      {:status 500 :body {:error (str "problem processing /maps request: " (ex-data e)) :body-minus-chips (:dissoc body :chips)}})))
 
 (defn persist-product
-  [product chipxy dates tile]
+  [product cx cy query_day tile data]
   (try
-    (log/infof "working on chip: %s" chipxy)
-    (doseq [query_day dates
-            :let [chipx (:cx chipxy)
-                  chipy (:cy chipxy)
-                  data (nemo/results chipx chipy)
-                  segments (:segments data)
-                  predictions (:predictions data)
-                  values (products/data segments predictions product query_day) 
-                  out_name (util/product-output-name product chipx chipy query_day)
-                  out_data {"x" chipx "y" chipy "values" values}]]
+    (log/infof "working on cx: %s  cy: %s  date: " cx cy query_day)
+    (let [values (products/data (:segments data) (:predictions data) product query_day) 
+          out_name (util/product-output-name product cx cy query_day)
+          out_data {"x" cx "y" cy "values" values}]
 
-      (log/infof "storing chip: %s" chipxy)
+      (log/infof "storing cx: %s  cy: %s  date: %s" cx cy query_day)
       (storage/put_json tile out_name out_data)
-      {:chipx chipx :chipy chipy :date query_day :status "success"})
+      {:chipx cx :chipy cy :date query_day :status "success"})
 
     (catch Exception e (log/errorf "Exception persist-product: %s" e)
-           {:chipxy chipxy :dates dates :status "fail"})))
+           {:cx cx :cy cy :date query_day :product product :status "fail"})))
 
 (defn products
   [{:keys [body] :as req}]
-  (log/infof "/products2 request body: %s" body)
-  (let [{:keys [dates chips product tile]} body
-        __ (storage/create_bucket tile)
-        persist #(persist-product product % dates tile)
-        results (pmap persist chips)
-        failures (filter (fn [i] (= "fail" (:status i))) results)]
+  (try
+    (let [{:keys [dates cx cy product tile]} body
+          __ (storage/create_bucket tile)
+          data (nemo/results cx cy)
+          persist #(persist-product product cx cy % tile data)
+          results (pmap persist dates)
+          failures (filter (fn [i] (= "fail" (:status i))) results)]
 
-    (if (true? (empty? failures))
-      {:status 200 :body {:product product :chips chips}}
-      {:status 400 :body {:failed failures}})))
+      (if (true? (empty? failures))
+        {:status 200 :body {:product product :cx cx :cy cy :dates dates}}
+        {:status 400 :body {:failed failures}}))
+    (catch Exception e
+      (log/errorf "Exception in products: %s" (ex-data e))
+      {:status 500 :body {:error (str "problem processing /products request: " (ex-data e)) :request-body body}})))
 
 (compojure/defroutes routes
   (compojure/context "/" request
@@ -126,7 +93,6 @@
     (compojure/GET "/" [] (healthy request))
     (compojure/GET "/available_products" [] (available-products request))
     (compojure/GET "/configuration" [] (get-configuration request))
-    (compojure/GET "/product" [product_type x y query_day] (get-product product_type x y query_day request))
     (compojure/POST "/products" [] (products request))
     (compojure/POST "/maps" [] (product-maps request))))
 
@@ -136,8 +102,8 @@
       (ring-json/wrap-json-body {:keywords? true})
       (ring-json/wrap-json-response)
       (ring-defaults/wrap-defaults ring-defaults/api-defaults)
-      (ring-keyword-params/wrap-keyword-params))
-)
+      (ring-keyword-params/wrap-keyword-params)))
+
 (def app (response-handler routes))
 
 (defn run-server

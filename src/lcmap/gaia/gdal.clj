@@ -64,7 +64,7 @@
 
 (defn update_geotiff
   ([tiff_name values x_offset y_offset x_size y_size]
-   (log/infof "update_geotiff args, name: %s | x_offset: %s | y_offset: %s | x_size: %s | y_size: %s | type offset: %s" tiff_name x_offset y_offset x_size y_size (type x_offset))
+   ;(log/infof "update_geotiff args, name: %s | x_offset: %s | y_offset: %s | x_size: %s | y_size: %s | type offset: %s" tiff_name x_offset y_offset x_size y_size (type x_offset))
    (let [dataset (gdal/Open tiff_name 1)
          band (.GetRasterBand dataset 1)]
      (.WriteRaster band x_offset y_offset x_size y_size (float-array values))

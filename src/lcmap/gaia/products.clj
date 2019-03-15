@@ -22,7 +22,7 @@
             "magnitude-of-change"            "SCMQA"
             "length-of-segment"              "SCSTAB"))
 
-(defn name
+(defn map-name
   [tileid product date]
   ; LCMAP_<grid>_<6digit tileid>_<representative year>_<production date>_<CCDC version>_<product abbr>
   (let [grid      (:region config)
