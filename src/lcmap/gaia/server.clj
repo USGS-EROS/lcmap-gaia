@@ -1,5 +1,6 @@
 (ns lcmap.gaia.server
   (:require [clojure.tools.logging :as log]
+            [clojure.stacktrace :as stacktrace]
             [compojure.core :as compojure]
             [compojure.route :as route]
             [ring.middleware.json :as ring-json]
@@ -58,34 +59,34 @@
 (defn persist-product
   [product cx cy query_day tile data]
   (try
-    (log/infof "working on cx: %s  cy: %s  date: " cx cy query_day)
     (let [values (products/data (:segments data) (:predictions data) product query_day) 
           out_name (util/product-output-name product cx cy query_day)
           out_data {"x" cx "y" cy "values" values}]
 
-      (log/infof "storing cx: %s  cy: %s  date: %s" cx cy query_day)
+      (log/infof "storing : %s" out_name)
       (storage/put_json tile out_name out_data)
-      {:chipx cx :chipy cy :date query_day :status "success"})
+      {:cx cx :cy cy :date query_day :status "success"})
 
-    (catch Exception e (log/errorf "Exception persist-product: %s" e)
-           {:cx cx :cy cy :date query_day :product product :status "fail"})))
+    (catch Exception e (log/errorf "Exception in persist-product - cx: %s  cy: %s  tile: %s  product: %s  date: %s exception-message: %s exception-data: %s" 
+                                   cx cy tile product query_day (.getMessage e) (ex-data e))
+           {:cx cx :cy cy :date query_day :product product :status "fail" :message (.getMessage e)})))
 
 (defn products
-  [{:keys [body] :as req}]
+  [{{dates :dates cx :cx cy :cy product :product tile :tile} :body :as all}]
   (try
-    (let [{:keys [dates cx cy product tile]} body
-          __ (storage/create_bucket tile)
+    (let [____ (storage/create_bucket tile)
           data (nemo/results cx cy)
           persist #(persist-product product cx cy % tile data)
           results (pmap persist dates)
-          failures (filter (fn [i] (= "fail" (:status i))) results)]
+          failures (->> results (filter (fn [i] (= "fail" (:status i)))) (map (fn [i] {(:date i) (:message i)})))
+          response_map {:product product :cx cx :cy cy :dates dates}]
 
       (if (true? (empty? failures))
-        {:status 200 :body {:product product :cx cx :cy cy :dates dates}}
-        {:status 400 :body {:failed failures}}))
+        {:status 200 :body response_map}
+        {:status 400 :body (assoc response_map :failed_dates failures)}))
     (catch Exception e
-      (log/errorf "Exception in products: %s" (ex-data e))
-      {:status 500 :body {:error (str "problem processing /products request: " (ex-data e)) :request-body body}})))
+      (log/errorf "Exception in products: %s" (-> e stacktrace/print-stack-trace with-out-str))
+      {:status 500 :body (assoc (:body all) :error (str "problem processing /products request: " (.getMessage e)))})))
 
 (compojure/defroutes routes
   (compojure/context "/" request
