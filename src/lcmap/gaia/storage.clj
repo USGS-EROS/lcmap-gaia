@@ -6,9 +6,9 @@
             [java-time :as jt]))
 
 (def client-config
-  {:access-key (:s3-access-key config)
-   :secret-key (:s3-secret-key config)
-   :endpoint   (:s3-endpoint config)
+  {:access-key (:storage-access-key config)
+   :secret-key (:storage-secret-key config)
+   :endpoint   (:storage-endpoint config)
    :client-config {:path-style-access-enabled true}})
 
 (defn list_buckets
