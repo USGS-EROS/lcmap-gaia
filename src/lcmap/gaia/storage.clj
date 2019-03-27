@@ -36,29 +36,29 @@
    (create_bucket bucketname)))
 
 (defn put_json
-  ([bucket filename data]
+  ([bucket output_path data]
    (let [encoded_data (json/encode data)
          byte_data (.getBytes encoded_data)
          byte_stream (java.io.ByteArrayInputStream. byte_data)
          metadata {:content-length (count byte_data)}]
      (try
-       (s3/put-object client-config :bucket-name bucket :key filename :input-stream byte_stream :metadata metadata)
+       (s3/put-object client-config :bucket-name bucket :key (:name output_path) :prefix (:prefix output_path) :input-stream byte_stream :metadata metadata)
        true
        (catch Exception e (log/errorf "Error putting data to object store: %s" e)
               false))))
-  ([filename data]
-   (put_json bucketname filename data)))
+  ([output_path data]
+   (put_json bucketname output_path data)))
 
 (defn put_tiff
-  ([bucket filename filepath]
-   (let [javafile (java.io.File. filepath)]
+  ([bucket filepath filelocation]
+   (let [javafile (java.io.File. filelocation)]
      (try
-       (s3/put-object client-config :bucket-name bucket :key filename :file javafile)
+       (s3/put-object client-config :bucket-name bucket :key (:name filepath) :prefix (:prefix filepath) :file javafile)
        true
        (catch Exception e (log/errorf "Error putting data to object store: %s" e)
               false))))
-  ([filename filepath]
-   (put_tiff bucketname filename filepath)))
+  ([filepath filelocation]
+   (put_tiff bucketname filepath filelocation)))
 
 (defn drop_json
   ([bucket filename]
@@ -71,16 +71,16 @@
   (s3/delete-bucket client-config :bucket-name bucket))
 
 (defn get_json
-  ([bucket filename]
+  ([bucket jsonpath]
    ;(log/infof "get_json request for bucket: %s  and file: %s" bucket filename)
    (try
-     (let [s3object (s3/get-object client-config :bucket-name bucket :key filename) ; need to add a :prefix modeling ard storage on hsm
+     (let [s3object (s3/get-object client-config :bucket-name bucket :key (:name jsonpath) :prefix (:prefix jsonpath)) ; need to add a :prefix modeling ard storage on hsm
            s3content (clojure.java.io/reader (:object-content s3object))]
        (json/parse-stream s3content))
      (catch Exception e ;(log/errorf "Error retrieving data from object store: %s" e)
        false)))
-  ([filename]
-   (get_json bucketname filename)))
+  ([jsonpath]
+   (get_json bucketname jsonpath)))
 
 (defn get_url
   ([bucket filename expire]

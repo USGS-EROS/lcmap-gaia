@@ -150,8 +150,4 @@
    (let [grid (first (file/read-json "resources/grid.conus.json"))]
      (get grid "proj"))))
 
-(defn product-output-name
-  ([product x y date suffix]
-   (->> [product x y date] (string/join "-") (#(str % suffix))))
-  ([product x y date]
-   (product-output-name product x y date ".json")))
+

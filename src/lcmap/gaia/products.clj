@@ -22,7 +22,15 @@
             "magnitude-of-change"            "SCMQA"
             "length-of-segment"              "SCSTAB"))
 
-(defn map-name
+(defn get-prefix
+  [grid date tile]
+  (let [hhh (subs tile 0 3)
+        vvv (subs tile 3 6)
+        year (first (string/split date #"-"))
+        elements [year grid hhh vvv]]
+    (string/join "/" elements)))
+
+(defn map-path
   [tileid product date]
   ; LCMAP_<grid>_<6digit tileid>_<representative date>_<production date>_<CCDC version>_<product abbr>
   (let [grid      (:region config)
@@ -30,8 +38,19 @@
         prod_date (string/replace (str (jt/local-date)) "-" "")
         ccd_ver   (:ccd_ver config)
         product_abbr (get product_abbreviations product)
-        elements ["LCMAP" grid tileid repr_date prod_date ccd_ver product_abbr]]
-    (str (string/join "-" elements) ".tif")))
+        elements ["LCMAP" grid tileid repr_date prod_date ccd_ver product_abbr]
+        name (str (string/join "-" elements) ".tif")
+        prefix (get-prefix grid date tileid)]
+    {:name name :prefix prefix}))
+
+(defn product-path
+  ([product x y tile date suffix]
+   (let [grid      (:region config)
+         name (->> [product x y date] (string/join "-") (#(str % suffix)))
+         prefix (get-prefix grid date tile)]
+     {:name name :prefix prefix}))
+  ([product x y tile date]
+   (product-path product x y tile date ".json")))
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;;;;;;;;;;;;;;;    CHANGE PRODUCTS    ;;;;;;;;;;;;;;;;;
