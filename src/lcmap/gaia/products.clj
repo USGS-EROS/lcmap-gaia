@@ -24,13 +24,13 @@
 
 (defn map-name
   [tileid product date]
-  ; LCMAP_<grid>_<6digit tileid>_<representative year>_<production date>_<CCDC version>_<product abbr>
+  ; LCMAP_<grid>_<6digit tileid>_<representative date>_<production date>_<CCDC version>_<product abbr>
   (let [grid      (:region config)
-        repr_year (first (string/split date #"-"))
+        repr_date (string/replace date "-" "")
         prod_date (string/replace (str (jt/local-date)) "-" "")
         ccd_ver   (:ccd_ver config)
         product_abbr (get product_abbreviations product)
-        elements ["LCMAP" grid tileid repr_year prod_date ccd_ver product_abbr]]
+        elements ["LCMAP" grid tileid repr_date prod_date ccd_ver product_abbr]]
     (str (string/join "-" elements) ".tif")))
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
