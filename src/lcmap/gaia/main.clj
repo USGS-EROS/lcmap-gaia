@@ -5,6 +5,7 @@
             [cheshire.core         :as json]
             [lcmap.gaia.config     :refer [config]]
             [lcmap.gaia.gdal       :as gdal]
+            [lcmap.gaia.storage    :as storage]
             [lcmap.gaia.file       :as file]
             [lcmap.gaia.products   :as products]
             [lcmap.gaia.server     :as server]))

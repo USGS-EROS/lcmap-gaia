@@ -27,6 +27,7 @@
    :predictions_path   (:predictions-path         environ/env)
    :storage-access-key (:storage-access-key       environ/env)
    :storage-secret-key (:storage-secret-key       environ/env)
+   :storage-bucket     (or (:storage-bucket       environ/env) "lcmap-tile")
    :storage-endpoint   (or (:storage-endpoint     environ/env) "http://localhost:7480")
    :query_day          (or (:query-day            environ/env) "07-01")
    :http_port      (or (try-read (:http-port      environ/env)) 9876)

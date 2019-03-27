@@ -40,16 +40,17 @@
           map_name (products/map-name tile product date)
           projection (util/get-projection)]
       (raster/create_blank_tile_tiff map_name tilex tiley projection)
+      (log/infof "Received /maps request to produce: %s" map_name)
       (doseq [chip chips
               :let [cx (:cx chip)
                     cy (:cy chip)
                     chip_name (util/product-output-name product cx cy date)
-                    chip_data (storage/get_json tile chip_name)]]
+                    chip_data (storage/get_json chip_name)]]
         (log/debugf "adding %s to tile: %s" chip_name tile)
         (if chip_data
           (raster/add_chip_to_tile map_name (get chip_data "values") tilex tiley cx cy)
           (log/debugf "no data to add to tile %s at cx: %s | cy: %s" tile cx cy)))
-      (storage/put_tiff tile map_name map_name)
+      (storage/put_tiff map_name map_name)
       (log/infof "done adding data to map_name: %s" map_name)
       {:status 200 :body (assoc (dissoc body :chips) :map_name map_name)})
     (catch Exception e
@@ -57,26 +58,25 @@
       {:status 500 :body {:error (str "problem processing /maps request: " (ex-data e)) :body-minus-chips (:dissoc body :chips)}})))
 
 (defn persist-product
-  [product cx cy query_day tile data]
+  [product cx cy query_day data]
   (try
     (let [values (products/data (:segments data) (:predictions data) product query_day) 
           out_name (util/product-output-name product cx cy query_day)
           out_data {"x" cx "y" cy "values" values}]
 
       (log/infof "storing : %s" out_name)
-      (storage/put_json tile out_name out_data)
+      (storage/put_json out_name out_data)
       {:cx cx :cy cy :date query_day :status "success"})
 
-    (catch Exception e (log/errorf "Exception in persist-product - cx: %s  cy: %s  tile: %s  product: %s  date: %s exception-message: %s exception-data: %s" 
-                                   cx cy tile product query_day (.getMessage e) (ex-data e))
+    (catch Exception e (log/errorf "Exception in persist-product - cx: %s  cy: %s  product: %s  date: %s exception-message: %s exception-data: %s" 
+                                   cx cy product query_day (.getMessage e) (ex-data e))
            {:cx cx :cy cy :date query_day :product product :status "fail" :message (.getMessage e)})))
 
 (defn products
-  [{{dates :dates cx :cx cy :cy product :product tile :tile} :body :as all}]
+  [{{dates :dates cx :cx cy :cy product :product} :body :as all}]
   (try
-    (let [____ (storage/create_bucket tile)
-          data (nemo/results cx cy)
-          persist #(persist-product product cx cy % tile data)
+    (let [data (nemo/results cx cy)
+          persist #(persist-product product cx cy % data)
           results (pmap persist dates)
           failures (->> results (filter (fn [i] (= "fail" (:status i)))) (map (fn [i] {(:date i) (:message i)})))
           response_map {:product product :cx cx :cy cy :dates dates}]
