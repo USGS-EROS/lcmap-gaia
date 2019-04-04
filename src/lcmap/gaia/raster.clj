@@ -1,10 +1,12 @@
 (ns lcmap.gaia.raster
-  (:require [lcmap.gaia.gdal :as ggdal]
+  (:require [clojure.tools.logging :as log]
+            [lcmap.gaia.gdal :as ggdal]
             [lcmap.gaia.products :as products]
             [lcmap.gaia.nemo :as nemo]
             [lcmap.gaia.file :as file]
             [lcmap.gaia.gdal :as gdal]
-            [lcmap.gaia.util :as util]))
+            [lcmap.gaia.util :as util]
+            [lcmap.gaia.storage :as storage]))
 
 ;; a tile is 50 chips x 50 chips
 ;; each chip is 100 pixels x 100 pixels
@@ -46,15 +48,20 @@
     (create_chip_tiff name values chipx chipy projection)))
 
 (defn create-geotiff
-  [product_type tileid years]
-  ;; (let [[tile_x tile_y] (util/tile_xy tileid)
-  ;;       chip_xys        (util/chip_xys tile_x tile_y)
-  ;;       dates           (util/product_dates years)]
-    
+  [{:keys [date tile tilex tiley chips product] :as all}]
+  (let [projection (util/get-projection)
+        map_path (products/map-path tile product date)]
+    (create_blank_tile_tiff (:name map_path) tilex tiley projection)
+    (log/infof "Received /maps request to produce: %s" (:name map_path))
+    (doseq [chip chips
+            :let [cx (:cx chip)
+                  cy (:cy chip)
+                  chip_path (products/ppath product cx cy date)
+                  chip_data (storage/get_json chip_path)]]
+      (log/debugf "adding %s to tile: %s" (:name chip_path) tile)
+      (if chip_data
+        (add_chip_to_tile (:name map_path) (get chip_data "values") tilex tiley cx cy)
+        (log/debugf "no data to add to tile %s at cx: %s | cy: %s" tile cx cy)))
+    map_path))
 
-
-
-  ;;   )
-  true
-)
 

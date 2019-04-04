@@ -33,69 +33,47 @@
   [request]
   {:status 200 :body config})
 
-(defn product-maps
+(defn raster-gen
   [{:keys [body] :as req}]
   (try
-    (let [{:keys [date tile tilex tiley chips product]} body
-          map_path (products/map-path tile product date)
-          projection (util/get-projection)]
-      (raster/create_blank_tile_tiff (:name map_path) tilex tiley projection)
-      (log/infof "Received /maps request to produce: %s" (:name map_path))
-      (doseq [chip chips
-              :let [cx (:cx chip)
-                    cy (:cy chip)
-                    chip_path (products/product-path product cx cy date)
-                    chip_data (storage/get_json chip_path)]]
-        (log/debugf "adding %s to tile: %s" (:name chip_path) tile)
-        (if chip_data
-          (raster/add_chip_to_tile (:name map_path) (get chip_data "values") tilex tiley cx cy)
-          (log/debugf "no data to add to tile %s at cx: %s | cy: %s" tile cx cy)))
-      (storage/put_tiff map_path (:name map_path))
-      (log/infof "done adding data to map_name: %s" (:name map_path))
+    (let [map_path (raster/create-geotiff body)]
       {:status 200 :body (assoc (dissoc body :chips) :map_name (:name map_path))})
     (catch Exception e
       (log/errorf "Exception in product-maps: %s" (ex-data e))
-      {:status 500 :body {:error (str "problem processing /maps request: " (ex-data e)) :body-minus-chips (:dissoc body :chips)}})))
+      {:status 500 :body {:error (str "problem processing /raster request: " (ex-data e)) 
+                          :body-minus-chips (:dissoc body :chips)}})))
 
-(defn persist-product
-  [product cx cy tile query_day data]
-  (try
-    (let [values (products/data (:segments data) (:predictions data) product query_day) 
-          out_path (products/product-path product cx cy tile query_day)
-          out_data {"x" cx "y" cy "values" values}]
+(defn raster-fetch
+  [{:keys [body] :as req}]
+  true)
 
-      (log/infof "storing : %s" (:name out_path))
-      (storage/put_json out_path out_data)
-      {:cx cx :cy cy :date query_day :status "success"})
-
-    (catch Exception e (log/errorf "Exception in persist-product - cx: %s  cy: %s  product: %s  date: %s exception-message: %s exception-data: %s" 
-                                   cx cy product query_day (.getMessage e) (ex-data e))
-           {:cx cx :cy cy :date query_day :product product :status "fail" :message (.getMessage e)})))
-
-(defn products
+(defn product-gen
   [{{dates :dates cx :cx cy :cy product :product tile :tile} :body :as all}]
   (try
-    (let [data (nemo/results cx cy)
-          persist #(persist-product product cx cy tile % data)
-          results (pmap persist dates)
-          failures (->> results (filter (fn [i] (= "fail" (:status i)))) (map (fn [i] {(:date i) (:message i)})))
-          response_map {:product product :cx cx :cy cy :dates dates}]
+    (let [results (products/generation all)
+          failures (:failures results)]
 
       (if (true? (empty? failures))
-        {:status 200 :body response_map}
-        {:status 400 :body (assoc response_map :failed_dates failures)}))
+        {:status 200 :body (dissoc results :failures)}
+        {:status 400 :body results}))
     (catch Exception e
-      (log/errorf "Exception in products: %s" (-> e stacktrace/print-stack-trace with-out-str))
-      {:status 500 :body (assoc (:body all) :error (str "problem processing /products request: " (.getMessage e)))})))
+      (log/errorf "Exception in product-gen: %s" (-> e stacktrace/print-stack-trace with-out-str))
+      {:status 500 :body (assoc (:body all) :error (str "problem processing /product request: " (.getMessage e)))})))
+
+(defn product-fetch
+  [{:keys [body] :as req}]
+  true)
 
 (compojure/defroutes routes
   (compojure/context "/" request
     (route/resources "/")
-    (compojure/GET "/" [] (healthy request))
-    (compojure/GET "/available_products" [] (available-products request))
-    (compojure/GET "/configuration" [] (get-configuration request))
-    (compojure/POST "/products" [] (products request))
-    (compojure/POST "/maps" [] (product-maps request))))
+    (compojure/GET   "/" [] (healthy request))
+    (compojure/GET   "/available_products" [] (available-products request))
+    (compojure/GET   "/configuration" [] (get-configuration request))
+    (compojure/POST  "/product"  [] (product-gen   request))
+    (compojure/GET   "/product"  [] (product-fetch request))
+    (compojure/POST  "/raster"   [] (raster-gen    request))
+    (compojure/GET   "/raster"   [] (raster-fetch  request))))
 
 (defn response-handler
   [routes]

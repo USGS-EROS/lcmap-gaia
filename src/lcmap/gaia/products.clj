@@ -8,7 +8,9 @@
             [lcmap.gaia.file       :as file]
             [lcmap.gaia.util       :as util]
             [lcmap.gaia.config     :refer [config]]
-            [lcmap.gaia.product-specs :as product-specs]))
+            [lcmap.gaia.storage    :as storage]
+            [lcmap.gaia.product-specs :as product-specs]
+            [lcmap.gaia.nemo       :as nemo]))
 
 (def product_abbreviations
   (hash-map "primary-landcover"              "LCPRI"
@@ -43,14 +45,16 @@
         prefix (get-prefix grid date tileid)]
     {:name name :prefix prefix}))
 
-(defn product-path
+(defn ppath
   ([product x y tile date suffix]
    (let [grid      (:region config)
          name (->> [product x y date] (string/join "-") (#(str % suffix)))
          prefix (get-prefix grid date tile)]
      {:name name :prefix prefix}))
   ([product x y tile date]
-   (product-path product x y tile date ".json")))
+   (ppath product x y tile date ".json")))
+
+
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;;;;;;;;;;;;;;;    CHANGE PRODUCTS    ;;;;;;;;;;;;;;;;;
@@ -444,4 +448,26 @@
         per_pixel_values (map #(product_fn (first (keys %)) (first (vals %)) query_ord) per_pixel_inputs)]
     (-> per_pixel_values (flatten_product_data) (product-specs/output_check))))
 
+(defn persist
+  [product cx cy tile query_day indata]
+  (try
+    (let [values (data (:segments indata) (:predictions indata) product query_day) 
+          out_path (ppath product cx cy tile query_day)
+          out_data {"x" cx "y" cy "values" values}]
+      (log/infof "storing : %s" (:name out_path))
+      (storage/put_json out_path out_data)
+      {:cx cx :cy cy :date query_day :status "success"})
 
+    (catch Exception e (log/errorf "Exception in persist - cx: %s  cy: %s  product: %s date: %s exception-message: %s exception-data: %s" 
+                                   cx cy product query_day (.getMessage e) (ex-data e))
+           {:cx cx :cy cy :date query_day :product product :status "fail" :message (.getMessage e)})))
+
+(defn generation
+  [{dates :dates cx :cx cy :cy product :product tile :tile :as all}]
+  (let [data (nemo/results cx cy)
+        persist #(persist product cx cy tile % data)
+        results (pmap persist dates)
+        failures (->> results 
+                      (filter (fn [i] (= "fail" (:status i)))) 
+                      (map (fn [i] {(:date i) (:message i)})))]
+    {:failures failures :product product :cx cx :cy cy :dates dates}))

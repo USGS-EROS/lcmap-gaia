@@ -4,6 +4,8 @@
             [lcmap.gaia.file     :as file]
             [lcmap.gaia.util     :as util]
             [lcmap.gaia.config   :refer [config]]
+            [lcmap.gaia.storage  :as storage]
+            [lcmap.gaia.nemo     :as nemo]
             [lcmap.gaia.test-resources :as tr]))
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
@@ -11,6 +13,51 @@
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
 (def response_set (set [:pixelx :pixely :val]))
+
+(deftest get-prefix-test
+  (let [grid "cu"
+        date "2001-07-01"
+        tile "123456"
+        result (products/get-prefix grid date tile)]
+    (is (= result "2001/cu/123/456"))))
+
+(deftest map-path-test
+  (with-redefs [config {:region "CU" :ccd_ver "C01"}]
+    (let [tileid "123456"
+          product "time-since-change"
+          date "2007-07-01"
+          result (products/map-path tileid product date)]
+      (is (= result {:name "LCMAP-CU-123456-20070701-20190404-C01-SCLAST.tif", :prefix "2007/CU/123/456"})))))
+
+(deftest ppath-test
+  (with-redefs [config {:region "CU"}]
+    (let [product "TSC"
+          x "111111"
+          y "222222"
+          tile "345678"
+          date "2007-07-01"
+          result (products/ppath product x y tile date)]
+      (is (= result {:name "TSC-111111-222222-2007-07-01.json", :prefix "2007/CU/345/678"})))))
+
+(deftest persist-test
+  (with-redefs [config {:region "CU"}
+                storage/put_json (fn [a b] true)
+                products/data (fn [a b c d] [1 2 3 4])]
+    (let [product "TSC"
+          cx "111111"
+          cy "222222"
+          tile "012345"
+          query_day "2007-07-01"
+          data {:segments [] :predictions []}
+          results (products/persist product cx cy tile query_day data)]
+      (is (= results {:cx cx :cy cy :date query_day :status "success"})))))
+
+(deftest generation-test
+  (with-redefs [nemo/results (fn [cx cy] [{:segments [1 2 3] :predictions [4 5 6]}])
+                products/persist (fn [p cx cy tile day data] {:date day :status "fail" :message "bad message"})]
+    (let [input {:dates ["2006-07-01"] :cx 111111 :cy 222222 :product "TSC" :tile "012345"}
+          result (products/generation input)]
+      (is (= result {:failures '({"2006-07-01" "bad message"}), :product "TSC", :cx 111111, :cy 222222, :dates ["2006-07-01"]})))))
 
 (deftest time-of-change-single-model-test
   (let [result (products/time-of-change (first (:segments tr/first_segments_predictions))  tr/query_ord 100 -100)]
