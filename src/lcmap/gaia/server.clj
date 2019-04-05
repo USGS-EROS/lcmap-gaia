@@ -48,9 +48,9 @@
   true)
 
 (defn product-gen
-  [{{dates :dates cx :cx cy :cy product :product tile :tile} :body :as all}]
+  [{:keys [body] :as req}]
   (try
-    (let [results (products/generation all)
+    (let [results (products/generation body)
           failures (:failures results)]
 
       (if (true? (empty? failures))
@@ -58,7 +58,7 @@
         {:status 400 :body results}))
     (catch Exception e
       (log/errorf "Exception in product-gen: %s" (-> e stacktrace/print-stack-trace with-out-str))
-      {:status 500 :body (assoc (:body all) :error (str "problem processing /product request: " (.getMessage e)))})))
+      {:status 500 :body (assoc body :error (str "problem processing /product request: " (.getMessage e)))})))
 
 (defn product-fetch
   [{:keys [body] :as req}]
