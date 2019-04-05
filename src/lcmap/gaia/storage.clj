@@ -22,12 +22,24 @@
    (list_buckets client-config)))
 
 (defn list_bucket_contents
+  ([bucket prefix]
+   (let [objects (s3/list-objects-v2 client-config :bucket-name bucket :prefix prefix :delimiter "/")
+         summaries (:object-summaries objects)]
+     (map :key summaries)))
   ([bucket]
    (let [objects (s3/list-objects-v2 client-config :bucket-name bucket)
          summaries (:object-summaries objects)]
      (map :key summaries)))
   ([]
    (list_bucket_contents bucketname)))
+
+(defn list_bucket_prefixes
+  ([bucket prefix]
+   (:common-prefixes (s3/list-objects-v2 client-config :bucket-name bucket :prefix prefix :delimiter "/")))
+  ([bucket]
+   (list_bucket_prefixes bucket ""))
+  ([]
+   (list_bucket_prefixes bucketname)))
 
 (defn create_bucket
   ([bucket]
@@ -62,15 +74,24 @@
   ([filepath filelocation]
    (put_tiff bucketname filepath filelocation)))
 
-(defn drop_json
+(defn drop_object
   ([bucket filename]
    (s3/delete-object client-config :bucket-name bucket :key filename))
   ([filename]
-   (drop_json bucketname filename)))
+   (drop_object bucketname filename)))
 
 (defn drop_bucket
   [bucket]
   (s3/delete-bucket client-config :bucket-name bucket))
+
+(defn drop_bucket_nuclear
+  [bucket]
+  (while (not (empty? (list_bucket_contents bucket)))
+    (do
+      (doseq [object (list_bucket_contents bucket)]
+        (drop_object bucket object))))
+  (drop_bucket bucket)
+  true)
 
 (defn get_json
   ([bucket jsonpath]
