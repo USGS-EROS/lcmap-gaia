@@ -48,15 +48,14 @@
     (create_chip_tiff name values chipx chipy projection)))
 
 (defn create-geotiff
-  [{:keys [date tile tilex tiley chips product] :as all}]
+  [{date :date tile :tile tilex :tilex tiley :tiley chips :chips product :product :as all}]
   (let [projection (util/get-projection)
         map_path (products/map-path tile product date)]
     (create_blank_tile_tiff (:name map_path) tilex tiley projection)
-    (log/infof "Received /maps request to produce: %s" (:name map_path))
     (doseq [chip chips
             :let [cx (:cx chip)
                   cy (:cy chip)
-                  chip_path (products/ppath product cx cy date)
+                  chip_path (products/ppath product cx cy tile date)
                   chip_data (storage/get_json chip_path)]]
       (log/debugf "adding %s to tile: %s" (:name chip_path) tile)
       (if chip_data

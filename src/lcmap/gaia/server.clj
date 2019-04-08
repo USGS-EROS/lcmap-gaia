@@ -35,12 +35,13 @@
 
 (defn raster-gen
   [{:keys [body] :as req}]
+  (log/infof "Received /raster request with params: %s" (dissoc body :chips))
   (try
     (let [map_path (raster/create-geotiff body)]
       {:status 200 :body (assoc (dissoc body :chips) :map_name (:name map_path))})
     (catch Exception e
-      (log/errorf "Exception in product-maps: %s" (ex-data e))
-      {:status 500 :body {:error (str "problem processing /raster request: " (ex-data e)) 
+      (log/errorf "Exception in product-maps: %s" e)
+      {:status 500 :body {:error (str "problem processing /raster request: " (ex-data e)) ; ex-data is not right
                           :body-minus-chips (:dissoc body :chips)}})))
 
 (defn raster-fetch

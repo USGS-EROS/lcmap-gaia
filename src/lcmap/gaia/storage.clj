@@ -95,9 +95,9 @@
 
 (defn get_json
   ([bucket jsonpath]
-   ;(log/infof "get_json request for bucket: %s  and file: %s" bucket filename)
    (try
-     (let [s3object (s3/get-object client-config :bucket-name bucket :key (:name jsonpath) :prefix (:prefix jsonpath)) ; need to add a :prefix modeling ard storage on hsm
+     (let [keyname (str (:prefix jsonpath) "/" (:name jsonpath))
+           s3object (s3/get-object client-config :bucket-name bucket :key keyname)
            s3content (clojure.java.io/reader (:object-content s3object))]
        (json/parse-stream s3content))
      (catch Exception e (log/errorf "Error retrieving data from object store: %s" e)
