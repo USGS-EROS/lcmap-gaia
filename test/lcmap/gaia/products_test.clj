@@ -1,5 +1,6 @@
 (ns lcmap.gaia.products-test
   (:require [clojure.test :refer :all]
+            [clojure.string      :as string]
             [lcmap.gaia.products :as products]
             [lcmap.gaia.file     :as file]
             [lcmap.gaia.util     :as util]
@@ -27,7 +28,10 @@
           product "time-since-change"
           date "2007-07-01"
           result (products/map-path tileid product date)]
-      (is (= result {:name "LCMAP-CU-123456-20070701-20190404-C01-SCLAST.tif", :prefix "2007/CU/123/456"})))))
+      (is (= (keys result) '(:name :prefix)))
+      (is (= (:prefix result) "2007/CU/123/456"))
+      (is (string/includes? (:name result) "LCMAP-CU-123456-20070701-"))
+      (is (string/includes? (:name result) "-C01-SCLAST.tif")))))
 
 (deftest ppath-test
   (with-redefs [config {:region "CU"}]
