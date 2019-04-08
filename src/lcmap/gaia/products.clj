@@ -42,8 +42,9 @@
         product_abbr (get product_abbreviations product)
         elements ["LCMAP" grid tileid repr_date prod_date ccd_ver product_abbr]
         name (str (string/join "-" elements) ".tif")
-        prefix (get-prefix grid date tileid)]
-    {:name name :prefix prefix}))
+        prefix (get-prefix grid date tileid)
+        url (storage/get_url storage/bucketname (str prefix "/" name))]
+    {:name name :prefix prefix :url url}))
 
 (defn ppath
   ([product x y tile date suffix]

@@ -1,5 +1,6 @@
 (ns lcmap.gaia.raster
   (:require [clojure.tools.logging :as log]
+            [clojure.java.io :as io]
             [lcmap.gaia.gdal :as ggdal]
             [lcmap.gaia.products :as products]
             [lcmap.gaia.nemo :as nemo]
@@ -61,6 +62,10 @@
       (if chip_data
         (add_chip_to_tile (:name map_path) (get chip_data "values") tilex tiley cx cy)
         (log/debugf "no data to add to tile %s at cx: %s | cy: %s" tile cx cy)))
+    (log/infof "pushing tiff to object storage: %s" map_path)
+    (storage/put_tiff map_path (:name map_path))
+    (log/infof "deleting local tiff: %s" (:name map_path))
+    (io/delete-file (:name map_path))
     map_path))
 
 

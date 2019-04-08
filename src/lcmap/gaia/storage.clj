@@ -96,11 +96,10 @@
 (defn get_json
   ([bucket jsonpath]
    (try
-     (let [keyname (str (:prefix jsonpath) "/" (:name jsonpath))
-           s3object (s3/get-object client-config :bucket-name bucket :key keyname)
+     (let [s3object (s3/get-object client-config :bucket-name bucket :key (str (:prefix jsonpath) "/" (:name jsonpath)))
            s3content (clojure.java.io/reader (:object-content s3object))]
        (json/parse-stream s3content))
-     (catch Exception e (log/errorf "Error retrieving data from object store: %s" e)
+     (catch Exception e (log/warnf "Unable to retrieve requested data from object store. jsonpath %s  exception: %s" jsonpath e)
        false)))
   ([jsonpath]
    (get_json bucketname jsonpath)))
