@@ -30,6 +30,8 @@
    :storage-bucket     (:storage-bucket           environ/env)
    :storage-endpoint   (or (:storage-endpoint     environ/env) "http://localhost:7480")
    :query_day          (or (:query-day            environ/env) "07-01")
+   :chipmunk_host      (or (:chipmunk-host        environ/env) "http://localhost:5656")
+   :chipmunk_acquired  (or (:chipmunk-acquired    environ/env) "1999-01-01/2002-01-01")
    :http_port      (or (try-read (:http-port      environ/env)) 9876)
    :fill_begin     (or (try-read (:fill-begin     environ/env)) true)
    :fill_end       (or (try-read (:fill-end       environ/env)) true)

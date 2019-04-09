@@ -5,9 +5,14 @@
             [lcmap.gaia.config     :refer [config]]))
 
 (defn results_url
-  ([x y host resource]
-   (str host "?")
-   ; $ http GET "http://lcmap-test.cr.usgs.gov/aux_cu_v01/chips?ubid=AUX_NLCD&x=2081415&y=2423805&acquired=1999-01-01/2002-01-01"
-   )
-  ([x y resource]
-   (results_url x y (:chipmunk_host config) resource)))
+  ([host resource ubid x y acquired]
+   (str host "/" resource "?ubid=" ubid "&x=" x "&y=" y "&acquired=" acquired))
+  ([resource ubid x y]
+   (results_url (:chipmunk_host config) resource ubid x y (:chipmunk_acquired config))))
+
+(defn nlcd
+  [x y]
+  (let [url (results_url "chips" "AUX_NLCD" x y)
+        response @(http/get url)
+        body (first (json/decode (:body response)))]
+    (get body "data")))
