@@ -441,7 +441,7 @@
 (defn data
   "Returns a 1-d collection of product values"
   [segments_json predictions_json product_type queryday]
-  (let [segments    (-> segments_json    (keywordize-keys) (product-specs/segment_coll_check)    (pixel_groups))
+  (let [segments    (-> segments_json (keywordize-keys) (product-specs/segment_coll_check) (pixel_groups))
         predictions (or (some-> predictions_json (not-empty) (keywordize-keys) (product-specs/prediction_coll_check) (pixel_groups)) [])
         product_fn  (->> product_type (product-specs/product_type_check) (str "lcmap.gaia.products/") (symbol) (resolve))
         query_ord   (-> queryday (product-specs/date_fmt_check) (util/to-ordinal))

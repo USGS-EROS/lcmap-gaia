@@ -48,6 +48,13 @@
         projection (util/get-projection "local")]
     (create_chip_tiff name values chipx chipy projection)))
 
+(defn nlcd_filter
+  [indata product cx cy]
+  (let [filters (chipmunk/nlcd_filters cx cy)
+        mask (:mask filters)
+        values (:values filters)]
+    (map * indata mask)))
+
 (defn create-geotiff
   [{date :date tile :tile tilex :tilex tiley :tiley chips :chips product :product :as all}]
   (let [projection (util/get-projection)
@@ -57,10 +64,11 @@
             :let [cx (:cx chip)
                   cy (:cy chip)
                   chip_path (products/ppath product cx cy tile date)
-                  chip_data (storage/get_json chip_path)]]
+                  chip_data (storage/get_json chip_path)
+                  chip_vals (nlcd_filter (get chip_data "values") product cx cy)]]
       (log/debugf "adding %s to tile: %s" (:name chip_path) tile)
       (if chip_data
-        (add_chip_to_tile (:name map_path) (get chip_data "values") tilex tiley cx cy)
+        (add_chip_to_tile (:name map_path) chip_vals tilex tiley cx cy)
         (log/debugf "no data to add to tile %s at cx: %s | cy: %s" tile cx cy)))
     (log/infof "pushing tiff to object storage: %s" map_path)
     (storage/put_tiff map_path (:name map_path))

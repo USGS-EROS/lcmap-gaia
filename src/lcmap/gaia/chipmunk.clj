@@ -22,5 +22,22 @@
         decoded (.decode (Base64/getDecoder) encoded)]
     (mapv int decoded)))
 
+(defn binary
+  [val]
+  (if (zero? val) 0 1))
+
+(defn nlcd_mask
+  "Return binary valued collection based on NLCD for masking product data"
+  ([x y]
+   (let [nlcd_values (nlcd x y)]
+     (map binary nlcd_values)))
+  ([values]
+   (map binary values)))
+
+(defn nlcd_filters
+  [x y]
+  (let [values (nlcd x y)
+        mask (nlcd_mask values)]
+    {:mask mask :values values}))
 
 
