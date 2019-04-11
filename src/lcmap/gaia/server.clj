@@ -1,5 +1,6 @@
 (ns lcmap.gaia.server
   (:require [clojure.tools.logging :as log]
+            [clojure.stacktrace :as stacktrace]
             [compojure.core :as compojure]
             [compojure.route :as route]
             [ring.middleware.json :as ring-json]
@@ -12,38 +13,17 @@
             [lcmap.gaia.file :as file]
             [lcmap.gaia.products :as products]
             [lcmap.gaia.util :as util]
-            [lcmap.gaia.config :refer [config]]))
+            [lcmap.gaia.config :refer [config]]
+            [lcmap.gaia.raster :as raster]
+            [lcmap.gaia.storage :as storage]
+            [cheshire.core :as json]))
 
-(defmulti get-product
-  (fn [_p _x _y _q request] 
-    (log/debugf "GET product request: \nproduct - %s \nx - %s y - %s
-                 \nquery day %s \nheaders %s" _p _x _y _q (:headers request))
-    (-> request (:headers) (get "accept"))))
+(defn healthy
+  "Hello Gaia"
+  [request]
+  {:status 200 :body {"message" "OK"}})
 
-(defmethod get-product :default
-  [product_type x y query_day request]
-  ; https://developer.mozilla.org/en-US/docs/Web/HTTP/Status/406
-  {:status 406 :body "please define a valid Accept header of either 'application/json' or..."})
-
-(defmethod get-product "application/json"
-  [product_type x y query_day request]
-  (try
-    (let [input (nemo/results x y) 
-          product_values (products/data (:segments input) (:predictions input) product_type query_day)]
-      {:status 200 :body {"x" (read-string x) "y" (read-string y) "values" product_values}})
-    (catch Exception e
-      (cond 
-        (= :data-failure (-> e ex-data :cause))
-          (do (log/errorf "data request problem: %s" (ex-data e))
-              {:status 500 :body "Unable to retrieve input data"})
-        (= :validation-failure (-> e ex-data :cause))
-          (do (log/errorf "input validation problem: %s" (ex-data e))
-              {:status 400 :body "Invalid input data"})
-        :else
-          (do (log/errorf "Exception encountered handling get-product request: %s" (ex-data e))
-              {:status 500 :body "Error handling request"})))))
-
-(defn get-products
+(defn available-products
   [request]
   {:status 200 :body ["annual-change" "curve-fit" "length-of-segment"  "magnitude-of-change" 
                       "primary-landcover" "primary-landcover-confidence" "secondary-landcover"  
@@ -53,18 +33,48 @@
   [request]
   {:status 200 :body config})
 
-(defn healthy
-  "Hello Gaia"
-  [request]
-  {:status 200 :body {"message" "OK"}})
+(defn raster-gen
+  [{:keys [body] :as req}]
+  (log/infof "Received /raster request with params: %s" (dissoc body :chips))
+  (try
+    (let [map_path (raster/create_geotiff body)]
+      {:status 200 :body (assoc (dissoc body :chips) :map_name (:name map_path) :map_prefix (:prefix map_path) :map_url (:url map_path))})
+    (catch Exception e
+      (log/errorf "Exception in product-maps: %s" e)
+      {:status 500 :body {:error (str "problem processing /raster request: " (ex-data e)) ; ex-data is not right
+                          :body-minus-chips (:dissoc body :chips)}})))
+
+(defn raster-fetch
+  [{:keys [body] :as req}]
+  true)
+
+(defn product-gen
+  [{:keys [body] :as req}]
+  (try
+    (let [results (products/generation body)
+          failures (:failures results)]
+
+      (if (true? (empty? failures))
+        {:status 200 :body (dissoc results :failures)}
+        {:status 400 :body results}))
+    (catch Exception e
+      (log/errorf "Exception in product-gen: %s" (-> e stacktrace/print-stack-trace with-out-str))
+      {:status 500 :body (assoc body :error (str "problem processing /product request: " (.getMessage e)))})))
+
+(defn product-fetch
+  [{:keys [body] :as req}]
+  true)
 
 (compojure/defroutes routes
   (compojure/context "/" request
-                     (route/resources "/")
-                     (compojure/GET "/" [] (healthy request))
-                     (compojure/GET "/available-products" [] (get-products request))
-                     (compojure/GET "/configuration" [] (get-configuration request))
-                     (compojure/GET "/product/:product_type/:x/:y/:query_day" [product_type x y query_day] (get-product product_type x y query_day request))))
+    (route/resources "/")
+    (compojure/GET   "/" [] (healthy request))
+    (compojure/GET   "/available_products" [] (available-products request))
+    (compojure/GET   "/configuration" [] (get-configuration request))
+    (compojure/POST  "/product"  [] (product-gen   request))
+    (compojure/GET   "/product"  [] (product-fetch request))
+    (compojure/POST  "/raster"   [] (raster-gen    request))
+    (compojure/GET   "/raster"   [] (raster-fetch  request))))
 
 (defn response-handler
   [routes]

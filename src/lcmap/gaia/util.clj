@@ -3,7 +3,10 @@
   (:require [java-time :as jt]
             [cheshire.core :as json]
             [clojure.string :as string]
-            [lcmap.gaia.config :refer [config]]))
+            [lcmap.gaia.config :refer [config]]
+            [environ.core :as environ]
+            [org.httpkit.client :as http]
+            [lcmap.gaia.file :as file]))
 
 (def gregorian_day_one (jt/local-date 0001 1))
 (def date_pattern (re-pattern #"[0-9]{4}-[0-9]{2}-[0-9]{2}"))
@@ -116,4 +119,35 @@
     (if (pos? count)
       (float (/ sum count)) 
       0)))
+
+;; add-usr-path and amend-usr-path blatantly ripped off from the
+;; USGS-EROS/lcmap-chipmunk project on GitHub, created by
+;; Jon Morton https://github.com/jmorton
+;; 
+(defn add-usr-path
+  ""
+  [& paths]
+  (let [field (.getDeclaredField ClassLoader "usr_paths")]
+    (try (.setAccessible field true)
+         (let [original (vec (.get field nil))
+               updated  (distinct (concat original paths))]
+           (.set field nil (into-array updated)))
+         (finally
+           (.setAccessible field false)))))
+
+(defn amend-usr-path
+  ""
+  [more-paths]
+  (apply add-usr-path more-paths))
+
+(defn get-projection
+  ([]
+   (let [grid_resource (str (:chipmunk-host environ/env) "/grid")
+         grid_response (http/get grid_resource)
+         json_body (first (json/parse-string (:body @grid_response)))]
+     (get json_body "proj")))
+  ([local]
+   (let [grid (first (file/read-json "resources/grid.conus.json"))]
+     (get grid "proj"))))
+
 

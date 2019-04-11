@@ -4,10 +4,58 @@
             [clojure.string        :as string]
             [clojure.math.numeric-tower :as math]
             [clojure.walk          :refer [keywordize-keys]]
+            [java-time             :as jt]
             [lcmap.gaia.file       :as file]
             [lcmap.gaia.util       :as util]
             [lcmap.gaia.config     :refer [config]]
-            [lcmap.gaia.product-specs :as product-specs]))
+            [lcmap.gaia.storage    :as storage]
+            [lcmap.gaia.product-specs :as product-specs]
+            [lcmap.gaia.nemo       :as nemo]))
+
+(def product_abbreviations
+  (hash-map "primary-landcover"              "LCPRI"
+            "secondary-landcover"            "LCSEC"
+            "primary-landcover-confidence"   "LCPCONF"
+            "secondary-landcover-confidence" "LCSCONF"
+            "annual-change"                  "LCACHG"
+            "time-of-change"                 "SCTIME"
+            "magnitude-of-change"            "SCMAG"
+            "time-since-change"              "SCLAST"
+            "magnitude-of-change"            "SCMQA"
+            "length-of-segment"              "SCSTAB"))
+
+(defn get-prefix
+  [grid date tile]
+  (let [hhh (subs tile 0 3)
+        vvv (subs tile 3 6)
+        year (first (string/split date #"-"))
+        elements [year grid hhh vvv]]
+    (string/join "/" elements)))
+
+(defn map-path
+  [tileid product date]
+  ; LCMAP_<grid>_<6digit tileid>_<representative date>_<production date>_<CCDC version>_<product abbr>
+  (let [grid      (:region config)
+        repr_date (string/replace date "-" "")
+        prod_date (string/replace (str (jt/local-date)) "-" "")
+        ccd_ver   (:ccd_ver config)
+        product_abbr (get product_abbreviations product)
+        elements ["LCMAP" grid tileid repr_date prod_date ccd_ver product_abbr]
+        name (str (string/join "-" elements) ".tif")
+        prefix (get-prefix grid date tileid)
+        url (storage/get_url storage/bucketname (str prefix "/" name))]
+    {:name name :prefix prefix :url url}))
+
+(defn ppath
+  ([product x y tile date suffix]
+   (let [grid      (:region config)
+         name (->> [product x y date] (string/join "-") (#(str % suffix)))
+         prefix (get-prefix grid date tile)]
+     {:name name :prefix prefix}))
+  ([product x y tile date]
+   (ppath product x y tile date ".json")))
+
+
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;;;;;;;;;;;;;;;    CHANGE PRODUCTS    ;;;;;;;;;;;;;;;;;
@@ -393,7 +441,7 @@
 (defn data
   "Returns a 1-d collection of product values"
   [segments_json predictions_json product_type queryday]
-  (let [segments    (-> segments_json    (keywordize-keys) (product-specs/segment_coll_check)    (pixel_groups))
+  (let [segments    (-> segments_json (keywordize-keys) (product-specs/segment_coll_check) (pixel_groups))
         predictions (or (some-> predictions_json (not-empty) (keywordize-keys) (product-specs/prediction_coll_check) (pixel_groups)) [])
         product_fn  (->> product_type (product-specs/product_type_check) (str "lcmap.gaia.products/") (symbol) (resolve))
         query_ord   (-> queryday (product-specs/date_fmt_check) (util/to-ordinal))
@@ -401,4 +449,26 @@
         per_pixel_values (map #(product_fn (first (keys %)) (first (vals %)) query_ord) per_pixel_inputs)]
     (-> per_pixel_values (flatten_product_data) (product-specs/output_check))))
 
+(defn persist
+  [product cx cy tile query_day indata]
+  (try
+    (let [values (data (:segments indata) (:predictions indata) product query_day) 
+          out_path (ppath product cx cy tile query_day)
+          out_data {"x" cx "y" cy "values" values}]
+      (log/infof "storing : %s" (:name out_path))
+      (storage/put_json out_path out_data)
+      {:cx cx :cy cy :date query_day :status "success"})
 
+    (catch Exception e (log/errorf "Exception in persist - cx: %s  cy: %s  product: %s date: %s exception-message: %s exception-data: %s" 
+                                   cx cy product query_day (.getMessage e) (ex-data e))
+           {:cx cx :cy cy :date query_day :product product :status "fail" :message (.getMessage e)})))
+
+(defn generation
+  [{dates :dates cx :cx cy :cy product :product tile :tile :as all}]
+  (let [data (nemo/results cx cy)
+        persist #(persist product cx cy tile % data)
+        results (pmap persist dates)
+        failures (->> results 
+                      (filter (fn [i] (= "fail" (:status i)))) 
+                      (map (fn [i] {(:date i) (:message i)})))]
+    {:failures failures :product product :cx cx :cy cy :dates dates}))
