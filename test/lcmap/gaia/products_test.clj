@@ -23,12 +23,13 @@
     (is (= result "2001/cu/123/456"))))
 
 (deftest map-path-test
-  (with-redefs [config {:region "CU" :ccd_ver "C01"}]
+  (with-redefs [config {:region "CU" :ccd_ver "C01"}
+                storage/get_url (fn [a b] (str a "/" b))]
     (let [tileid "123456"
           product "time-since-change"
           date "2007-07-01"
           result (products/map-path tileid product date)]
-      (is (= (keys result) '(:name :prefix)))
+      (is (= (keys result) '(:name :prefix :url)))
       (is (= (:prefix result) "2007/CU/123/456"))
       (is (string/includes? (:name result) "LCMAP-CU-123456-20070701-"))
       (is (string/includes? (:name result) "-C01-SCLAST.tif")))))
