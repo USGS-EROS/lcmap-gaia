@@ -31,23 +31,10 @@
   (let [values (repeat (* 5000 5000) 0)]
     (gdal/create_geotiff name values ulx uly projection 5000 5000 0 0)))
 
-(defn create_chip_tiff
-  [name values ulx uly projection]
-  (gdal/create_geotiff name values ulx uly projection 100 100 0 0))
-
 (defn add_chip_to_tile
   [name values tile_x tile_y chip_x chip_y]
   (let [[x_offset y_offset] (calc_offset tile_x tile_y chip_x chip_y)]
     (gdal/update_geotiff name values x_offset y_offset)))
-
-(defn generate_product
-  [infile name]
-  (let [input (file/read-json infile)
-        values (get input "values")
-        chipx (get input "x")
-        chipy (get input "y")
-        projection (util/get-projection "local")]
-    (create_chip_tiff name values chipx chipy projection)))
 
 (defn nlcd_filter
   [indata product cx cy]
@@ -56,7 +43,7 @@
         values (:values filters)]
     (map * indata mask)))
 
-(defn create-geotiff
+(defn create_geotiff
   [{date :date tile :tile tilex :tilex tiley :tiley chips :chips product :product :as all}]
   (let [projection (util/get-projection)
         map_path (products/map-path tile product date)]
