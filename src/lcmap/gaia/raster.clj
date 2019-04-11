@@ -7,7 +7,8 @@
             [lcmap.gaia.file :as file]
             [lcmap.gaia.gdal :as gdal]
             [lcmap.gaia.util :as util]
-            [lcmap.gaia.storage :as storage]))
+            [lcmap.gaia.storage :as storage]
+            [lcmap.gaia.chipmunk :as chipmunk]))
 
 ;; a tile is 50 chips x 50 chips
 ;; each chip is 100 pixels x 100 pixels
