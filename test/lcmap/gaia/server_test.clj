@@ -7,5 +7,5 @@
 
 (deftest healthy-test
   (let [response (server/healthy {})]
-    (is (= (:body response) {"message" "OK"}))
+    (is (= (:body response) {:healthy true}))
     (is (= (:status response) 200))))

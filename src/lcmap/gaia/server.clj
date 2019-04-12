@@ -18,17 +18,6 @@
             [lcmap.gaia.storage :as storage]
             [cheshire.core :as json]))
 
-(defn healthy
-  "Hello Gaia"
-  [request]
-  {:status 200 :body {"message" "OK"}})
-
-(defn available-products
-  [request]
-  {:status 200 :body ["annual-change" "curve-fit" "length-of-segment"  "magnitude-of-change" 
-                      "primary-landcover" "primary-landcover-confidence" "secondary-landcover"  
-                      "secondary-landcover-confidence" "time-of-change" "time-since-change"]})
-
 (defn get-configuration
   [request]
   {:status 200 :body config})
@@ -65,11 +54,16 @@
   [{:keys [body] :as req}]
   true)
 
+(defn healthy
+  "Handler for checking application health"
+  [request]
+  (log/debug "GET health")
+  {:status 200 :body {:healthy true}})
+
 (compojure/defroutes routes
   (compojure/context "/" request
     (route/resources "/")
-    (compojure/GET   "/" [] (healthy request))
-    (compojure/GET   "/available_products" [] (available-products request))
+    (compojure/GET   "/healthy" [] (healthy request))
     (compojure/GET   "/configuration" [] (get-configuration request))
     (compojure/POST  "/product"  [] (product-gen   request))
     (compojure/GET   "/product"  [] (product-fetch request))
