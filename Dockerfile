@@ -7,4 +7,4 @@ RUN apt-get install gdal-bin libgdal-dev libgdal-java libgdal20 python-gdal -y
 COPY resources/log4j.properties /log4j.properties
 COPY target/gaia-*-standalone.jar /
 # java.xml.bind issue related to http-kit and java 9 https://github.com/http-kit/http-kit/issues/356
-CMD java --add-modules java.xml.bind -jar gaia-*-standalone.jar
+CMD java -XX:+UnlockExperimentalVMOptions -XX:+UseCGroupMemoryLimitForHeap -server -XX:+UseG1GC --add-modules java.xml.bind -jar gaia-*-standalone.jar
