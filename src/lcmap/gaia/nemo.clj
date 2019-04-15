@@ -17,7 +17,8 @@
 (defn segments
   [x y]
   (let [url (results_url x y (:segments_path config))
-        response @(http/get url)]
+        options {:timeout (:nemo_timeout config)}
+        response @(http/get url options)]
     (if (= 200 (:status response))
       (parse_body response)
       (throw (ex-info "Nemo Error - non-200 /segment response" 
@@ -27,7 +28,8 @@
 (defn predictions
   [x y]
   (let [url (results_url x y (:predictions_path config))
-        response @(http/get url)]
+        options {:timeout (:nemo_timeout config)}
+        response @(http/get url options)]
     (if (= 200 (:status response))
       (parse_body response)
       (throw (ex-info "Nemo Error - non-200 /annual_prediction response" 
