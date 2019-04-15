@@ -53,13 +53,13 @@
           cy "222222"
           tile "012345"
           query_day "2007-07-01"
-          data {:segments [] :predictions []}
-          results (products/persist product cx cy tile query_day data)]
+          results (products/persist product cx cy tile query_day [] [])]
       (is (= results {:cx cx :cy cy :date query_day :status "success"})))))
 
 (deftest generation-test
-  (with-redefs [nemo/results (fn [cx cy] [{:segments [1 2 3] :predictions [4 5 6]}])
-                products/persist (fn [p cx cy tile day data] {:date day :status "fail" :message "bad message"})]
+  (with-redefs [nemo/segments (fn [cx cy] [1 2 3])
+                nemo/predictions (fn [cx cy] [4 5 6])
+                products/persist (fn [p cx cy tile day segs preds] {:date day :status "fail" :message "bad message"})]
     (let [input {:dates ["2006-07-01"] :cx 111111 :cy 222222 :product "TSC" :tile "012345"}
           result (products/generation input)]
       (is (= result {:failures '({"2006-07-01" "bad message"}), :product "TSC", :cx 111111, :cy 222222, :dates ["2006-07-01"]})))))

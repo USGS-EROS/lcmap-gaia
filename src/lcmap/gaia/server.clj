@@ -47,7 +47,7 @@
         {:status 200 :body (dissoc results :failures)}
         {:status 400 :body results}))
     (catch Exception e
-      (log/errorf "Exception in product-gen: %s" (-> e stacktrace/print-stack-trace with-out-str))
+      (log/errorf "Exception in product-gen-> ex-data: %s   \n stacktrace:  %s" (ex-data e) (-> e stacktrace/print-stack-trace with-out-str))
       {:status 500 :body (assoc body :error (str "problem processing /product request: " (.getMessage e)))})))
 
 (defn product-fetch

@@ -24,6 +24,14 @@
             "magnitude-of-change"            "SCMQA"
             "length-of-segment"              "SCSTAB"))
 
+(defn is-landcover
+  [name]
+  (let [abbr (get product_abbreviations name)]
+    (try
+      (some? (re-matches #"LC(.*)" abbr))
+      (catch NullPointerException e
+        false))))
+
 (defn get-prefix
   [grid date tile]
   (let [hhh (subs tile 0 3)
@@ -450,9 +458,9 @@
     (-> per_pixel_values (flatten_product_data) (product-specs/output_check))))
 
 (defn persist
-  [product cx cy tile query_day indata]
+  [product cx cy tile query_day segments predictions]
   (try
-    (let [values (data (:segments indata) (:predictions indata) product query_day) 
+    (let [values (data segments predictions product query_day) 
           out_path (ppath product cx cy tile query_day)
           out_data {"x" cx "y" cy "values" values}]
       (log/infof "storing : %s" (:name out_path))
@@ -465,8 +473,9 @@
 
 (defn generation
   [{dates :dates cx :cx cy :cy product :product tile :tile :as all}]
-  (let [data (nemo/results cx cy)
-        persist #(persist product cx cy tile % data)
+  (let [segments (nemo/segments cx cy)
+        predictions (if (is-landcover product) (nemo/predictions cx cy) []) ; predictions are not required for change products. don't make unnecessary http requests
+        persist #(persist product cx cy tile % segments predictions)
         results (pmap persist dates)
         failures (->> results 
                       (filter (fn [i] (= "fail" (:status i)))) 

@@ -18,11 +18,12 @@
   (with-fake-http [{:url faux_nemo_segments_url :method :get} {:status 200 :body "{\"xxx\":\"yyy\"}"}
                    {:url faux_nemo_predictions_url :method :get} {:status 200 :body "{\"xxx\":\"yyy\"}"}]
     (with-redefs [config/config faux_config]
-      (let [results (nemo/results 999 666)]
-        (is (= {:segments {"xxx" "yyy"}, :predictions {"xxx" "yyy"}} results))))))
+      (let [segments (nemo/segments 999 666)
+            predictions (nemo/predictions 999 666)]
+        (is (= segments {"xxx" "yyy"}))))))
 
 (deftest test-results-bad
   (with-fake-http [{:url faux_nemo_segments_url :method :get} {:status 500 :body nil}
                    {:url faux_nemo_predictions_url :method :get} {:status 404 :body "err"}]
     (with-redefs [config/config faux_config]
-      (is (thrown-with-msg? Exception #"Nemo Error" (nemo/results 999 666))))))
+      (is (thrown-with-msg? Exception #"Nemo Error" (nemo/segments 999 666))))))

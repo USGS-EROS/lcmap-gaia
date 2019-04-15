@@ -14,16 +14,23 @@
   [http_response]
   (json/parse-string (:body http_response)))
 
-(defn results
+(defn segments
   [x y]
-  (let [segments_url         (results_url x y (:segments_path config))
-        predictions_url      (results_url x y (:predictions_path config))
-        segments_response    @(http/get segments_url)
-        predictions_response @(http/get predictions_url)
-        segments_status    (:status segments_response)
-        predictions_status (:status predictions_response)]
-    (if (= 200 segments_status predictions_status)
-      {:segments (parse_body segments_response) :predictions (parse_body predictions_response)}
-      (throw (ex-info "Nemo Error - non-200 response" {:type :nemo-request-failure :cause :data-failure 
-                                                       :segments-status segments_status :predictions-status predictions_status
-                                                       :segments-url segments_url :predictions-url predictions_url})))))
+  (let [url (results_url x y (:segments_path config))
+        response @(http/get url)]
+    (if (= 200 (:status response))
+      (parse_body response)
+      (throw (ex-info "Nemo Error - non-200 /segment response" 
+                      {:type :nemo-request-failure :cause :data-failure 
+                       :status (:status response) :url url})))))
+
+(defn predictions
+  [x y]
+  (let [url (results_url x y (:predictions_path config))
+        response @(http/get url)]
+    (if (= 200 (:status response))
+      (parse_body response)
+      (throw (ex-info "Nemo Error - non-200 /annual_prediction response" 
+                      {:type :nemo-request-failure :cause :data-failure 
+                       :status (:status response) :url url})))))
+
