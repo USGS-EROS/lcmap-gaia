@@ -152,9 +152,10 @@
   ([model query-day x y]
    (try
      (let [curve-qa  (:curqa model)
-           start-day (-> model (:sday) (util/to-ordinal)) 
-           end-day   (-> model (:eday) (util/to-ordinal)) 
-           value     (if (<= start-day query-day end-day) curve-qa 0)]
+           change-prob (:chprob model)
+           query-year  (-> query-day (util/ordinal-to-javatime) (util/javatime-year))
+           break-year  (-> (:bday model) (util/to-javatime) (util/javatime-year))
+           value       (if (and (= change-prob 1.0) (= break-year query-year)) curve-qa 0)]
        (hash-map :pixelx x :pixely y :val value))
      (catch Exception e
        (product-exception-handler e "curve-fit"))))
