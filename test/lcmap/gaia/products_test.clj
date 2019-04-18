@@ -100,8 +100,8 @@
 
 (deftest length-of-segment-chip-level-test
   (let [results (map #(products/length-of-segment (-> % (keys) (first)) (-> % (vals) (first)) tr/query_ord) tr/pixel_map)
-        gt_zero (filter (fn [i] (> (:val i) 0)) results)]
-    (is (= (count gt_zero) 5633))
+        gt_zero (filter (fn [i] (> (:val i) 8000)) results)]
+    (is (= (count gt_zero) 4996))
     (is (= (count results) 10000))))
 
 (deftest curve-fit-single-model-test
