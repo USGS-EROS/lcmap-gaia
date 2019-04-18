@@ -32,6 +32,7 @@
    :query_day          (or (:query-day            environ/env) "07-01")
    :chipmunk_host      (or (:chipmunk-host        environ/env) "http://localhost:5656")
    :chipmunk_acquired  (or (:chipmunk-acquired    environ/env) "1999-01-01/2002-01-01")
+   :stability_begin    (or (:stability-begin      environ/env) "1982-01-01")
    :http_port      (or (try-read (:http-port      environ/env)) 9876)
    :nemo_timeout   (or (try-read (:nemo-timeout   environ/env)) 2400000)
    :fill_begin     (or (try-read (:fill-begin     environ/env)) true)

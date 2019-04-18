@@ -135,12 +135,13 @@
   "Return length of change segment in days"
   ([model query-day x y]
    (try
-     (let [start-day (-> model (:sday) (util/to-ordinal))
+     (let [stability_begin (:stability_begin config)
+           fill (- query-day (util/to-ordinal stability_begin))
+           start-day (-> model (:sday) (util/to-ordinal))
            end-day   (-> model (:eday) (util/to-ordinal))
-           startends [(- query-day start-day) (- query-day end-day)]
-           positives (filter (fn [i] (> i 0)) startends)
-           minimum   (if (= 0 (count positives)) 0 (apply min positives))]
-       (hash-map :pixelx x :pixely y :val minimum))
+           diff      (if (> query-day end-day) (- query-day end-day) (- query-day start-day))
+           value     (if (and (<= 0 diff) (< diff fill)) diff fill)]
+       (hash-map :pixelx x :pixely y :val value))
      (catch Exception e
        (product-exception-handler e "length-of-segment"))))
   ([pixel_map pixel_models query-day]
