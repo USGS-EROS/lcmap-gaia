@@ -98,14 +98,19 @@
   ([model query-day x y]
    (try
      (let [change-prob (:chprob model)
-           break-day   (-> model (:bday) (util/to-ordinal)) 
-           distance    (if (= 1.0 change-prob) (- query-day break-day) 0)] ; can't use nil, dont think 0 is appropriate
+           break-day   (-> model (:bday) (util/to-ordinal))
+           day-diff    (- query-day break-day)
+           distance    (if (and (= 1.0 change-prob) (pos? day-diff)) day-diff 0)]
        (hash-map :pixelx x :pixely y :val distance))
      (catch Exception e
        (product-exception-handler e "time-since-change"))))
   ([pixel_map pixel_models query-day]
-   (let [values (map #(time-since-change % query-day (:px pixel_map) (:py pixel_map)) (:segments pixel_models))]
-     (last (filter (fn [i] (some? (:val i))) (sort-by :val values))))))
+   (let [values    (map #(time-since-change % query-day (:px pixel_map) (:py pixel_map)) (:segments pixel_models))
+         non-zeros (filter (fn [i] (not (zero? (:val i)))) values)]
+     (if (empty? non-zeros) 
+       (first values)                    ; they are all 0, doesn't matter which 
+       (first (sort-by :val non-zeros))) ; take the shortest distance
+     )))
 
 (defn magnitude-of-change
   "Return severity of spectral shift"

@@ -81,7 +81,7 @@
 (deftest time-since-change-chip-level-test
   (let [results (map #(products/time-since-change (-> % (keys) (first)) (-> % (vals) (first)) tr/query_ord) tr/pixel_map)
         greater_thans (filter (fn [i] (> 1000 (:val i))) results)]
-    (is (= (count greater_thans) 5887))
+    (is (= (count greater_thans) 6182))
     (is (= (count results) 10000))))
 
 (deftest magnitude-of-change-single-model-test
