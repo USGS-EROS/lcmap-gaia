@@ -80,12 +80,12 @@
   ([model query-day x y]
    (try
      (let [change-prob (:chprob model)
-           break-day   (-> model (:bday) (util/to-ordinal)) 
+           break-day   (-> model (:bday) (util/to-javatime)) 
            query-year  (-> query-day (util/ordinal-to-javatime) (util/javatime-year))
-           break-year  (-> break-day (util/ordinal-to-javatime) (util/javatime-year))
+           break-year  (-> break-day (util/javatime-year))
            response    #(hash-map :pixelx x :pixely y :val %)]
-       (if (= true (= query-year break-year) (= 1.0 change-prob))
-         (-> break-day (util/ordinal-to-javatime) (util/javatime-day-of-year) response) 
+       (if (and (= query-year break-year) (= 1.0 change-prob))
+         (-> break-day (util/javatime-day-of-year) response) 
          (-> 0 response)))
      (catch Exception e
        (product-exception-handler e "time-of-change"))))
