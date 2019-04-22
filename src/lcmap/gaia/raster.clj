@@ -47,21 +47,25 @@
   [{date :date tile :tile tilex :tilex tiley :tiley chips :chips product :product :as all}]
   (let [projection (util/get-projection)
         map_path (products/map-path tile product date)]
-    (create_blank_tile_tiff (:name map_path) tilex tiley projection)
-    (doseq [chip chips
-            :let [cx (:cx chip)
-                  cy (:cy chip)
-                  chip_path (products/ppath product cx cy tile date)
-                  chip_data (storage/get_json chip_path)
-                  chip_vals (nlcd_filter (get chip_data "values") product cx cy)]]
-      (log/debugf "adding %s to tile: %s" (:name chip_path) tile)
-      (if chip_data
-        (add_chip_to_tile (:name map_path) chip_vals tilex tiley cx cy)
-        (log/debugf "no data to add to tile %s at cx: %s | cy: %s" tile cx cy)))
-    (log/infof "pushing tiff to object storage: %s" map_path)
-    (storage/put_tiff map_path (:name map_path))
-    (log/infof "deleting local tiff: %s" (:name map_path))
-    (io/delete-file (:name map_path))
-    map_path))
+    (try
+      (create_blank_tile_tiff (:name map_path) tilex tiley projection)
+      (doseq [chip chips
+              :let [cx (:cx chip)
+                    cy (:cy chip)
+                    chip_path (products/ppath product cx cy tile date)
+                    chip_data (storage/get_json chip_path)
+                    chip_vals (nlcd_filter (get chip_data "values") product cx cy)]]
+        (log/debugf "adding %s to tile: %s" (:name chip_path) tile)
+        (if chip_data
+          (add_chip_to_tile (:name map_path) chip_vals tilex tiley cx cy)
+          (log/debugf "no data to add to tile %s at cx: %s | cy: %s" tile cx cy)))
+      (log/infof "pushing tiff to object storage: %s" map_path)
+      (storage/put_tiff map_path (:name map_path))
+      (log/infof "deleting local tiff: %s" (:name map_path))
+      (io/delete-file (:name map_path))
+      map_path
+      (catch Exception e
+        (log/errorf "Exception in raster/create_geotiff ! args: %s - message: %s - data: %s - exception: %s" (dissoc all :chips) (.getMessage e) (ex-data e) e)
+        (throw (ex-info "Exception creating geotiff!" {:map_path map_path :ex_data (ex-data e) :message (.getMessage e)}))))))
 
 

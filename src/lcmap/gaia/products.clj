@@ -1,6 +1,7 @@
 (ns lcmap.gaia.products
   (:gen-class)
   (:require [clojure.tools.logging :as log]
+            [clojure.stacktrace :as stacktrace]
             [clojure.string        :as string]
             [clojure.math.numeric-tower :as math]
             [clojure.walk          :refer [keywordize-keys]]
@@ -474,17 +475,22 @@
       (storage/put_json out_path out_data)
       {:cx cx :cy cy :date query_day :status "success"})
 
-    (catch Exception e (log/errorf "Exception in persist - cx: %s  cy: %s  product: %s date: %s exception-message: %s exception-data: %s" 
-                                   cx cy product query_day (.getMessage e) (ex-data e))
+    (catch Exception e 
+      (log/errorf "Exception in persist - cx: %s  cy: %s  product: %s date: %s exception-message: %s exception-data: %s" 
+                  cx cy product query_day (.getMessage e) (ex-data e))
            {:cx cx :cy cy :date query_day :product product :status "fail" :message (str (.getMessage e) " - " (ex-data e))})))
 
 (defn generation
   [{dates :dates cx :cx cy :cy product :product tile :tile :as all}]
-  (let [segments (nemo/segments cx cy)
-        predictions (if (is-landcover product) (nemo/predictions cx cy) []) ; predictions are not required for change products. don't make unnecessary http requests
-        persist #(persist product cx cy tile % segments predictions)
-        results (pmap persist dates)
-        failures (->> results 
-                      (filter (fn [i] (= "fail" (:status i)))) 
-                      (map (fn [i] {(:date i) (:message i)})))]
-    {:failures failures :product product :cx cx :cy cy :dates dates}))
+  (try
+    (let [segments (nemo/segments cx cy)
+          predictions (if (is-landcover product) (nemo/predictions cx cy) []) ; predictions are not required for change products. don't make unnecessary http requests
+          persist #(persist product cx cy tile % segments predictions)
+          results (pmap persist dates)
+          failures (->> results 
+                        (filter (fn [i] (= "fail" (:status i)))) 
+                        (map (fn [i] {(:date i) (:message i)})))]
+      {:failures failures :product product :cx cx :cy cy :dates dates})
+    (catch Exception e
+      (log/errorf "Exception in products/generation ! args: %s -  message: %s - data: %s - stacktrace: %s" all (.getMessage e) (ex-data e) (-> e stacktrace/print-stack-trace with-out-str))
+      (throw (ex-info "Exception in product generation" {:data (ex-data e) :error-message (.getMessage e) :args all})))))

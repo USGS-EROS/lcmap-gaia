@@ -57,8 +57,9 @@
      (try
        (s3/put-object client-config :bucket-name bucket :key keyname :input-stream byte_stream :metadata metadata)
        true
-       (catch Exception e (log/errorf "Error putting data to object store: %s" e)
-              false))))
+       (catch Exception e 
+         (log/errorf "Error in storage/put_json! path: %s in object store bucket %s - exception: %s" output_path bucket e)
+         (throw (ex-info "Error persisting json to object storage " {:bucket bucket :output_path output_path}))))))
   ([output_path data]
    (put_json bucketname output_path data)))
 
@@ -69,8 +70,9 @@
      (try
        (s3/put-object client-config :bucket-name bucket :key keyname  :file javafile)
        true
-       (catch Exception e (log/errorf "Error putting data to object store: %s" e)
-              false))))
+       (catch Exception e 
+         (log/errorf "Error persisting tiff %s to object storage bucket %s - exception - %s" filepath bucket e)
+         (throw (ex-info "Error persisting tiff to object storage " {:bucket bucket :filepath filepath}))))))
   ([filepath filelocation]
    (put_tiff bucketname filepath filelocation)))
 

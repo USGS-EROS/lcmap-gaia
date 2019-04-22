@@ -29,9 +29,9 @@
     (let [map_path (raster/create_geotiff body)]
       {:status 200 :body (assoc (dissoc body :chips) :map_name (:name map_path) :map_prefix (:prefix map_path) :map_url (:url map_path))})
     (catch Exception e
-      (log/errorf "Exception in product-maps: %s" e)
-      {:status 500 :body {:error (str "problem processing /raster request: " (ex-data e)) ; ex-data is not right
-                          :body-minus-chips (:dissoc body :chips)}})))
+      (log/errorf "Exception in server/raster-gen ! args: %s - message: %s - data: %s - stacktrace: %s" body (.getMessage e) (ex-data e) (-> e stacktrace/print-stack-trace with-out-str))
+      {:status 500 :body (assoc body :error (str "problem processing /raster request: " (.getMessage e))
+                                     :data (ex-data e))})))
 
 (defn raster-fetch
   [{:keys [body] :as req}]
@@ -47,8 +47,10 @@
         {:status 200 :body (dissoc results :failures)}
         {:status 400 :body results}))
     (catch Exception e
-      (log/errorf "Exception in product-gen-> ex-data: %s   \n stacktrace:  %s" (ex-data e) (-> e stacktrace/print-stack-trace with-out-str))
-      {:status 500 :body (assoc body :error (str "problem processing /product request: " (.getMessage e)))})))
+      (log/errorf "Exception in server/product-gen ! args: %s - message: %s - data: %s stacktrace:  %s" 
+                  body (.getMessage e) (ex-data e) (-> e stacktrace/print-stack-trace with-out-str))
+      {:status 500 :body (assoc body :error (str "problem processing /product request: " (.getMessage e))
+                                     :data (ex-data e))})))
 
 (defn product-fetch
   [{:keys [body] :as req}]
