@@ -476,7 +476,7 @@
 
     (catch Exception e (log/errorf "Exception in persist - cx: %s  cy: %s  product: %s date: %s exception-message: %s exception-data: %s" 
                                    cx cy product query_day (.getMessage e) (ex-data e))
-           {:cx cx :cy cy :date query_day :product product :status "fail" :message (.getMessage e)})))
+           {:cx cx :cy cy :date query_day :product product :status "fail" :message (str (.getMessage e) " - " (ex-data e))})))
 
 (defn generation
   [{dates :dates cx :cx cy :cy product :product tile :tile :as all}]
