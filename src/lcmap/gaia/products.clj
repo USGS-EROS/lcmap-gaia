@@ -34,16 +34,19 @@
         false))))
 
 (defn get-prefix
-  [grid date tile]
-  (let [hhh (subs tile 0 3)
-        vvv (subs tile 3 6)
-        year (first (string/split date #"-"))
-        elements [year grid hhh vvv]]
-    (string/join "/" elements)))
+  ([grid date tile type product]
+   (let [hhh (subs tile 0 3)
+         vvv (subs tile 3 6)
+         year (first (string/split date #"-"))
+         elements [type year grid hhh vvv product]]
+     (string/join "/" elements)))
+  ([grid date tile type product cx cy]
+   (let [prfx (get-prefix grid date tile type product)
+         elements [prfx cx cy]]
+     (string/join "/" elements))))
 
 (defn map-path
   [tileid product date]
-  ; LCMAP_<grid>_<6digit tileid>_<representative date>_<production date>_<CCDC version>_<product abbr>
   (let [grid      (:region config)
         repr_date (string/replace date "-" "")
         prod_date (string/replace (str (jt/local-date)) "-" "")
@@ -51,7 +54,7 @@
         product_abbr (get product_abbreviations product)
         elements ["LCMAP" grid tileid repr_date prod_date ccd_ver product_abbr]
         name (str (string/join "-" elements) ".tif")
-        prefix (get-prefix grid date tileid)
+        prefix (get-prefix grid date tileid "raster" product)
         url (storage/get_url storage/bucketname (str prefix "/" name))]
     {:name name :prefix prefix :url url}))
 
@@ -59,11 +62,10 @@
   ([product x y tile date suffix]
    (let [grid      (:region config)
          name (->> [product x y date] (string/join "-") (#(str % suffix)))
-         prefix (get-prefix grid date tile)]
+         prefix (get-prefix grid date tile "json" product x y)]
      {:name name :prefix prefix}))
   ([product x y tile date]
    (ppath product x y tile date ".json")))
-
 
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;

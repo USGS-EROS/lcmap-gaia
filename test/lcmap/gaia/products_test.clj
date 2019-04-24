@@ -15,12 +15,20 @@
 
 (def response_set (set [:pixelx :pixely :val]))
 
-(deftest get-prefix-test
+(deftest get-prefix-test-raster
   (let [grid "cu"
         date "2001-07-01"
         tile "123456"
-        result (products/get-prefix grid date tile)]
-    (is (= result "2001/cu/123/456"))))
+        result (products/get-prefix grid date tile "raster" "time-since-change")]
+    (is (= result "raster/2001/cu/123/456/time-since-change"))))
+
+(deftest get-prefix-test-json
+  (let [grid "cu"
+        date "2001-07-01"
+        tile "123456"
+        result (products/get-prefix grid date tile "json" "time-since-change" 222 333)]
+    (is (= result "json/2001/cu/123/456/time-since-change/222/333"))))
+
 
 (deftest map-path-test
   (with-redefs [config {:region "CU" :ccd_ver "C01"}
@@ -30,7 +38,7 @@
           date "2007-07-01"
           result (products/map-path tileid product date)]
       (is (= (keys result) '(:name :prefix :url)))
-      (is (= (:prefix result) "2007/CU/123/456"))
+      (is (= (:prefix result) "raster/2007/CU/123/456/time-since-change"))
       (is (string/includes? (:name result) "LCMAP-CU-123456-20070701-"))
       (is (string/includes? (:name result) "-C01-SCLAST.tif")))))
 
@@ -42,7 +50,7 @@
           tile "345678"
           date "2007-07-01"
           result (products/ppath product x y tile date)]
-      (is (= result {:name "TSC-111111-222222-2007-07-01.json", :prefix "2007/CU/345/678"})))))
+      (is (= result {:name "TSC-111111-222222-2007-07-01.json", :prefix "json/2007/CU/345/678/TSC/111111/222222"})))))
 
 (deftest persist-test
   (with-redefs [config {:region "CU"}
