@@ -66,9 +66,11 @@
 (defn put_tiff
   ([bucket filepath filelocation]
    (let [javafile (java.io.File. filelocation)
-         keyname (str (:prefix filepath) "/" (:name filepath))]
+         content-length (.length javafile)
+         keyname (str (:prefix filepath) "/" (:name filepath))
+         metadata {:content-length content-length :content-type "image/tiff"}]
      (try
-       (s3/put-object client-config :bucket-name bucket :key keyname  :file javafile)
+       (s3/put-object client-config :bucket-name bucket :key keyname  :file javafile :metadata metadata)
        true
        (catch Exception e 
          (log/errorf "Error persisting tiff %s to object storage bucket %s - exception - %s" filepath bucket e)
