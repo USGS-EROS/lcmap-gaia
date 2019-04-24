@@ -52,7 +52,7 @@
    (let [encoded_data (json/encode data)
          byte_data (.getBytes encoded_data)
          byte_stream (java.io.ByteArrayInputStream. byte_data)
-         metadata {:content-length (count byte_data)}
+         metadata {:content-length (count byte_data) :content-type "application/json"}
          keyname (str (:prefix output_path) "/" (:name output_path))]
      (try
        (s3/put-object client-config :bucket-name bucket :key keyname :input-stream byte_stream :metadata metadata)
