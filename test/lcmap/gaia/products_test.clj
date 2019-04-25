@@ -119,7 +119,7 @@
 (deftest curve-fit-chip-level-test
   (let [results (map #(products/curve-fit (-> % (keys) (first)) (-> % (vals) (first)) 730789) tr/pixel_map)
         gt_zero (filter (fn [i] (> (:val i) 0)) results)]
-    (is (= (count gt_zero) 1226))
+    (is (= (count gt_zero) 9503))
     (is (= (count results) 10000))))
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
