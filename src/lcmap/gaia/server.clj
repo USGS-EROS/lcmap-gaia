@@ -54,7 +54,14 @@
 
 (defn product-fetch
   [{:keys [body] :as req}]
-  true)
+  (try
+    (let [result (products/retrieve body)]
+      {:status 200 :body result})
+    (catch Exception e
+      (log/errorf "Exception in server/product-fetch ! args: %s - message: %s - data: %s stacktrace:  %s" 
+                  body (.getMessage e) (ex-data e) (-> e stacktrace/print-stack-trace with-out-str))
+      {:status 500 :body (assoc body :error (str "problem processing /product request: " (.getMessage e))
+                                     :data (ex-data e))})))
 
 (defn healthy
   "Handler for checking application health"

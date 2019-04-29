@@ -104,7 +104,7 @@
            s3content (clojure.java.io/reader (:object-content s3object))]
        (json/parse-stream s3content))
      (catch Exception e (log/warnf "Unable to retrieve requested data from object store. jsonpath %s  exception: %s" jsonpath e)
-       false)))
+       nil)))
   ([jsonpath]
    (get_json bucketname jsonpath)))
 

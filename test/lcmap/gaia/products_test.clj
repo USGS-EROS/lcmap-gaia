@@ -352,4 +352,9 @@
     ; requesting a change product with no predictions is valid
     (is (= 2915 (nth (products/values segs [] product query_day) 5)))))
 
+(deftest retrieve-test
+  (with-redefs [storage/get_json (fn [i] {:cx 111111 :cy 222222 :values [0 1 2 3 4 5 6]})]
+    (let [input {:dates ["2006-07-01"] :cx 111111 :cy 222222 :product "TSC" :tile "012345"}
+          result (products/retrieve input)]
+      (is (= result '({:name "TSC-111111-222222-2006-07-01.json" :data {:cx 111111 :cy 222222 :values [0 1 2 3 4 5 6]}}))))))
 

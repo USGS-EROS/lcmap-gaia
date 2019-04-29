@@ -467,6 +467,7 @@
     (-> per_pixel_values (flatten_values) (product-specs/output_check))))
 
 (defn chip
+  "Returns hash-map of product values and storage path for a cx, cy, product and date "
   [product cx cy tile query_day segments predictions]
   (try
     (let [values (values segments predictions product query_day) 
@@ -479,16 +480,17 @@
            {:status "fail" :date query_day :message (str (.getMessage e) " - " (ex-data e))})))
 
 (defn generate
+  "Top level function for calculating values for a given cx, cy, and product across a range of dates "
   [{dates :dates cx :cx cy :cy product :product tile :tile :as all}]
   (try
     (let [segments    (nemo/segments cx cy)
-          predictions (if (is-landcover product) (nemo/predictions cx cy) []) ; predictions are not required for change products. don't make unnecessary http requests
+          predictions (if (is-landcover product) (nemo/predictions cx cy) []) ; don't make unnecessary http requests
           chip_fn     #(chip product cx cy tile % segments predictions)
           results     (pmap chip_fn dates)
           failures    (->> results
                            (filter (fn [i] (= "fail" (:status i)))) 
                            (map (fn [i] {(:date i) (:message i)})))]
-
+      ; persist the results
       (doseq [result results]
         (when (= "success" (:status result)) 
           (log/infof "storing : %s" (get-in result [:path :name]))
@@ -496,5 +498,18 @@
 
       {:failures failures :product product :cx cx :cy cy :dates dates})
     (catch Exception e
-      (log/errorf "Exception in products/generation ! args: %s -  message: %s - data: %s - stacktrace: %s" all (.getMessage e) (ex-data e) (-> e stacktrace/print-stack-trace with-out-str))
-      (throw (ex-info "Exception in product generation" {:data (ex-data e) :error-message (.getMessage e) :args all})))))
+      (log/errorf "Exception in products/generation ! args: %s -  message: %s - data: %s - stacktrace: %s" 
+                  all (.getMessage e) (ex-data e) (-> e stacktrace/print-stack-trace with-out-str))
+      (throw (ex-info "Exception in product generate" {:data (ex-data e) :error-message (.getMessage e) :args all})))))
+
+(defn retrieve
+  "Return product json values for a given cx, cy, product across a range of dates"
+  [{dates :dates cx :cx cy :cy product :product tile :tile :as all}]
+  (try
+    (let [paths   (map #(ppath product cx cy tile %) dates)
+          data_fn (fn [i] {:name (:name i) :data (storage/get_json i)})]
+      (map data_fn paths))
+    (catch Exception e
+      (log/errorf "Exception in products/retrieve ! args: %s -  message: %s - data: %s - stacktrace: %s" 
+                  all (.getMessage e) (ex-data e) (-> e stacktrace/print-stack-trace with-out-str))
+      (throw (ex-info "Exception in product retrieve" {:data (ex-data e) :error-message (.getMessage e) :args all})))))
