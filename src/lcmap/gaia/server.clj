@@ -9,6 +9,7 @@
             [ring.util.response :as ring-response]
             [org.httpkit.client :as http]
             [org.httpkit.server :as http-server]
+            [clojure.walk :refer [keywordize-keys]]
             [lcmap.gaia.nemo :as nemo]
             [lcmap.gaia.file :as file]
             [lcmap.gaia.products :as products]
@@ -53,15 +54,16 @@
                                      :data (ex-data e))})))
 
 (defn product-fetch
-  [{:keys [body] :as req}]
+  [{:keys [query-params] :as request}]
   (try
-    (let [result (products/retrieve body)]
+    (log/infof "query params: %s " query-params)
+    (let [result (products/retrieve (keywordize-keys query-params))]
       {:status 200 :body result})
     (catch Exception e
       (log/errorf "Exception in server/product-fetch ! args: %s - message: %s - data: %s stacktrace:  %s" 
-                  body (.getMessage e) (ex-data e) (-> e stacktrace/print-stack-trace with-out-str))
-      {:status 500 :body (assoc body :error (str "problem processing /product request: " (.getMessage e))
-                                     :data (ex-data e))})))
+                  query-params (.getMessage e) (ex-data e) (-> e stacktrace/print-stack-trace with-out-str))
+      {:status 500 :body (assoc query-params :error (str "problem processing /product request: " (.getMessage e)) :data (ex-data e))})))
+
 
 (defn healthy
   "Handler for checking application health"
