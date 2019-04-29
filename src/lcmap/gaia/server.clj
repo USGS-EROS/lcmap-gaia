@@ -40,7 +40,7 @@
 (defn product-gen
   [{:keys [body] :as req}]
   (try
-    (let [results (products/generation body)
+    (let [results (products/generate body)
           failures (:failures results)]
 
       (if (true? (empty? failures))

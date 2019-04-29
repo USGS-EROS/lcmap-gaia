@@ -52,24 +52,24 @@
           result (products/ppath product x y tile date)]
       (is (= result {:name "TSC-111111-222222-2007-07-01.json", :prefix "json/2007/CU/345/678/TSC/111111/222222"})))))
 
-(deftest persist-test
+(deftest chip-test
   (with-redefs [config {:region "CU"}
                 storage/put_json (fn [a b] true)
-                products/data (fn [a b c d] [1 2 3 4])]
+                products/values (fn [a b c d] [1 2 3 4])]
     (let [product "TSC"
           cx "111111"
           cy "222222"
           tile "012345"
           query_day "2007-07-01"
-          results (products/persist product cx cy tile query_day [] [])]
-      (is (= results {:cx cx :cy cy :date query_day :status "success"})))))
+          results (products/chip product cx cy tile query_day [] [])]
+      (is (= results {:data {"x" "111111", "y" "222222", "values" [1 2 3 4]} :path {:name "TSC-111111-222222-2007-07-01.json", :prefix "json/2007/CU/012/345/TSC/111111/222222"} :date "2007-07-01" :status "success"})))))
 
-(deftest generation-test
+(deftest generate-test
   (with-redefs [nemo/segments (fn [cx cy] [1 2 3])
                 nemo/predictions (fn [cx cy] [4 5 6])
-                products/persist (fn [p cx cy tile day segs preds] {:date day :status "fail" :message "bad message"})]
+                products/chip (fn [p cx cy tile day segs preds] {:path {} :status "fail" :message "bad message" :date day})]
     (let [input {:dates ["2006-07-01"] :cx 111111 :cy 222222 :product "TSC" :tile "012345"}
-          result (products/generation input)]
+          result (products/generate input)]
       (is (= result {:failures '({"2006-07-01" "bad message"}), :product "TSC", :cx 111111, :cy 222222, :dates ["2006-07-01"]})))))
 
 (deftest time-of-change-single-model-test
@@ -333,10 +333,10 @@
                {:pixely 3159075, :pixelx -2114775, :val 6} ; upper left
                {:pixely 3159075, :pixelx -2114745, :val 8} ; upper right
                ]]
-    (is (= (products/flatten_product_data input)
+    (is (= (products/flatten_values input)
            [6 8 2 4]))))
 
-(deftest data_test
+(deftest values_test
   (let [segs  tr/segments_json    ;(:segments tr/first_segments_predictions)  
         preds tr/predictions_json ;(:predictions tr/first_segments_predictions)
         first_seg (:segments tr/first_segments_predictions)
@@ -344,12 +344,12 @@
         product "time-since-change"
         query_day "2006-07-01"]
     ; requesting a change product with segments and predictions is valid
-    (is (= 2915 (nth (products/data segs preds product query_day) 5)))
+    (is (= 2915 (nth (products/values segs preds product query_day) 5)))
     ; products/data should throw an exception when its output is too small
-    (is (thrown-with-msg? Exception #"Validation Error" (products/data first_seg first_pred product query_day)))
+    (is (thrown-with-msg? Exception #"Validation Error" (products/values first_seg first_pred product query_day)))
     ; requesting a landcover product with no predictions should throw an exception
-    (is (thrown-with-msg? Exception #"Error calculating landcover" (products/data segs [] "primary-landcover" query_day)))
+    (is (thrown-with-msg? Exception #"Error calculating landcover" (products/values segs [] "primary-landcover" query_day)))
     ; requesting a change product with no predictions is valid
-    (is (= 2915 (nth (products/data segs [] product query_day) 5)))))
+    (is (= 2915 (nth (products/values segs [] product query_day) 5)))))
 
 

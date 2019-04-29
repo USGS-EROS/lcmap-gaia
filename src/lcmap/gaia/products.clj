@@ -440,7 +440,7 @@
   (let [juxt_fn (util/variable-juxt [:px :py])]
     (group-by juxt_fn injson)))
 
-(defn flatten_product_data
+(defn flatten_values
   "Return a flat list of product values given a collection of hash-maps
   for every pixel in a chip, [{:pixely 3159045, :pixelx -2114775, :val 6290},...] ...]"
   [product_value_collection]
@@ -455,7 +455,7 @@
         flattened (util/flatten-vals sorted-y-rows :val)]
     flattened))
 
-(defn data
+(defn values
   "Returns a 1-d collection of product values"
   [segments_json predictions_json product_type queryday]
   (let [segments    (-> segments_json (keywordize-keys) (product-specs/segment_coll_check) (pixel_groups))
@@ -464,33 +464,36 @@
         query_ord   (-> queryday (product-specs/date_fmt_check) (util/to-ordinal))
         per_pixel_inputs (map #(pixel_map {:pixelxy % :segments segments :predictions predictions}) (keys segments))
         per_pixel_values (map #(product_fn (first (keys %)) (first (vals %)) query_ord) per_pixel_inputs)]
-    (-> per_pixel_values (flatten_product_data) (product-specs/output_check))))
+    (-> per_pixel_values (flatten_values) (product-specs/output_check))))
 
-(defn persist
+(defn chip
   [product cx cy tile query_day segments predictions]
   (try
-    (let [values (data segments predictions product query_day) 
-          out_path (ppath product cx cy tile query_day)
-          out_data {"x" cx "y" cy "values" values}]
-      (log/infof "storing : %s" (:name out_path))
-      (storage/put_json out_path out_data)
-      {:cx cx :cy cy :date query_day :status "success"})
-
+    (let [values (values segments predictions product query_day) 
+          path (ppath product cx cy tile query_day)
+          data {"x" cx "y" cy "values" values}]
+      {:status "success" :path path :data data :date query_day})
     (catch Exception e 
-      (log/errorf "Exception in persist - cx: %s  cy: %s  product: %s date: %s exception-message: %s exception-data: %s" 
+      (log/errorf "Exception in products/chip - cx: %s  cy: %s  product: %s date: %s exception-message: %s exception-data: %s" 
                   cx cy product query_day (.getMessage e) (ex-data e))
-           {:cx cx :cy cy :date query_day :product product :status "fail" :message (str (.getMessage e) " - " (ex-data e))})))
+           {:status "fail" :date query_day :message (str (.getMessage e) " - " (ex-data e))})))
 
-(defn generation
+(defn generate
   [{dates :dates cx :cx cy :cy product :product tile :tile :as all}]
   (try
-    (let [segments (nemo/segments cx cy)
+    (let [segments    (nemo/segments cx cy)
           predictions (if (is-landcover product) (nemo/predictions cx cy) []) ; predictions are not required for change products. don't make unnecessary http requests
-          persist #(persist product cx cy tile % segments predictions)
-          results (pmap persist dates)
-          failures (->> results 
-                        (filter (fn [i] (= "fail" (:status i)))) 
-                        (map (fn [i] {(:date i) (:message i)})))]
+          chip_fn     #(chip product cx cy tile % segments predictions)
+          results     (pmap chip_fn dates)
+          failures    (->> results
+                           (filter (fn [i] (= "fail" (:status i)))) 
+                           (map (fn [i] {(:date i) (:message i)})))]
+
+      (doseq [result results]
+        (when (= "success" (:status result)) 
+          (log/infof "storing : %s" (get-in result [:path :name]))
+          (storage/put_json (:path result) (:data result))))
+
       {:failures failures :product product :cx cx :cy cy :dates dates})
     (catch Exception e
       (log/errorf "Exception in products/generation ! args: %s -  message: %s - data: %s - stacktrace: %s" all (.getMessage e) (ex-data e) (-> e stacktrace/print-stack-trace with-out-str))
