@@ -82,7 +82,11 @@
          keyname (str (:prefix output_path) "/" (:name output_path))]
 
     (try
-       (s3/put-object client-config :bucket-name bucket :key keyname :input-stream byte_stream :metadata metadata)
+      (if (:storage-local config)
+        (do (log/warn "$STORAGE_LOCAL is true, not pushing json to Object Storage!")
+            (spit (:name output_path) encoded_data)) 
+        (s3/put-object client-config :bucket-name bucket :key keyname :input-stream byte_stream :metadata metadata))
+     
        true
        (catch Exception e
          (let [msg (format "problem putting object json %s: %s" keyname (.getMessage e))]
@@ -99,7 +103,9 @@
            keyname (str (:prefix filepath) "/" (:name filepath))
            metadata {:content-length content-length :content-type "image/tiff"}
            acl {:grant-permission ["AllUsers" "Read"]}]
-       (s3/put-object client-config :bucket-name bucket :key keyname  :file javafile :metadata metadata :access-control-list acl)
+       (if (:storage-local config)
+         (log/warn "$STORAGE_LOCAL is true, not pushing tiff to Object Storage!")
+         (s3/put-object client-config :bucket-name bucket :key keyname  :file javafile :metadata metadata :access-control-list acl))       
        true)
      (catch Exception e
        (let [keyname (str (:prefix filepath) "/" (:name filepath))
@@ -182,6 +188,16 @@
 (defn segments-sorted
   [x y key]
   (util/sort-by-key (segments x y) key))
+
+(defn grouped-segments
+  [x y]
+  (let [segments (util/with-retry (segments-sorted x y "sday"))]
+    (util/pixel-groups segments)))
+
+(defn grouped-predictions
+  [x y]
+  (let [predictions (util/with-retry (predictions x y))]
+    (util/pixel-groups predictions)))
 
 (defn init
   "Create bucket in object storage"
