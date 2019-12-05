@@ -1,6 +1,7 @@
 (ns lcmap.gaia.cover-products
   (:gen-class)
-  (:require [clojure.math.numeric-tower :as math]
+  (:require [clojure.core.async    :as async]
+            [clojure.math.numeric-tower :as math]
             [clojure.math.combinatorics :as combo]
             [clojure.string        :as string]
             [clojure.tools.logging :as log]
@@ -10,7 +11,8 @@
             [lcmap.gaia.gdal       :as gdal]
             [lcmap.gaia.product-specs :as product-specs]
             [lcmap.gaia.storage    :as storage]
-            [lcmap.gaia.util       :as util]))
+            [lcmap.gaia.util       :as util]
+            [cheshire.core         :as json]))
 
 (defn product-exception-handler
   [exception product_name pixel]
@@ -70,6 +72,11 @@
         indexes (range 0 (count (first probabilities)))
         mean_fn (fn [i] (util/mean (map #(nth % i) probabilities)))]
     (map mean_fn indexes)))
+
+(defn scaled-probabilities 
+  [probabilities rank] 
+  (let [operation (comp util/scale-value #(nth % rank) reverse sort mean-probabilities)] 
+    (operation probabilities)))
 
 (defn class-details
   [predictions query_date rank burn_ratio]
@@ -149,52 +156,68 @@
               :primary_class   primary_classification
               :secondary_class secondary_classification)))
 
+(defn same-class
+  [segments class_key]
+  (let [seg_one (first segments)
+        seg_two (last segments)] 
+    (= (class_key seg_one) (class_key seg_two))))
+
 (defn landcover
   "Return the landcover value given the segments, probabilities, query_day and rank for a location"
-  ([characterized_segments query_date rank conf]
+  ([segments query_date conf]
    (try
-     (let [segments            (filter (fn [i] (not (empty? (:probabilities i)))) characterized_segments) 
-           first_start_day     (:sday (first segments))
+     (let [first_start_day     (:sday (first segments))
            last_end_day        (:eday (last segments))
            intersected_segment (first (filter :intersects segments))
            eday_bday_model     (first (filter :btw_eday_bday segments))
            between_eday_sday   (reduce falls-between-eday-sday segments)
            between_bday_sday   (reduce falls-between-bday-sday segments)
-           class_key           (if (= 0 rank) :primary_class :secondary_class)]
+           ;class_key           (if (= 0 rank) :primary_class :secondary_class)
+           key_response        #(hash-map :primary (:primary_class %) :secondary (:secondary_class %))]
 
        (cond
          ; query date precedes first segment start date
          (< query_date first_start_day)
-         (class_key (first segments)) ; return value of the first segment
+         (key_response (first segments))  ; (class_key (first segments)) ; return value of the first segment
 
          ; query date follows last segment end date
          (> query_date last_end_day)
-         (class_key (last segments)) ; return value of the last segment
+         (key_response (last segments)) ;(class_key (last segments)) ; return value of the last segment
          
          ; query date falls between a segments start date and end date
          (not (nil? intersected_segment))
-         (class_key intersected_segment) ; return the class value for the intercepted model
+         (key_response intersected_segment) ; (class_key intersected_segment) ; return the class value for the intercepted model
 
-         ; query date falls between segments of same landcover classification and fill_samelc config is true
-         (and (:fill_samelc conf) (= (class_key (first between_eday_sday)) (class_key (last between_eday_sday))))
-         (class_key (last between_eday_sday)) ; return the value from the last model from the pair of models the query date fell between
+         ;; ; query date falls between segments of same landcover classification and fill_samelc config is true
+          (and (:fill_samelc conf) (= (class_key (first between_eday_sday)) (class_key (last between_eday_sday))))
+          (key_response (last between_eday_sday)) ;(class_key (last between_eday_sday)) ; return the value from the last model from the pair of models the query date fell between
+
+          ; both are the same
+
+          ; either primary or secondary is the same
+          ; for the primary/secondary thats the same, take the primary/secondary of the (last between_eday_sday)
+          ; for the other: (if (:fill_difflc conf)
+          ;                  
+
+
+          ; neither are the same ..
 
          ; query date falls between one segments break date and the following segments start date and fill_difflc config is true
          (and (:fill_difflc conf) (not (map? between_bday_sday)))
-         (class_key (last between_bday_sday)) ; return the value from the last model from the pair of models the query date fell between
+         (key_response (last between_bday_sday)) ;(class_key (last between_bday_sday)) ; return the value from the last model from the pair of models the query date fell between
 
          ; query date falls between a segments end date and break date and fill_difflc config is true
          (and (:fill_difflc conf) (not (nil? eday_bday_model)))
-         (class_key eday_bday_model) ; return the value from the model where the query date intersected the end date and break date
+         (key_response eday_bday_model) ;(class_key eday_bday_model) ; return the value from the model where the query date intersected the end date and break date
 
          :else ; we need to throw an exception
          (throw (ex-info (format "Landcover value calculation problem, unclassifiable pixel %s" (:pixelxy segments)) 
                          {:type "data-generation-error"}))))
 
      (catch Exception e
-       (product-exception-handler e "landcover" characterized_segments))))
-  ([characterized_pixel date rank] ; enable passing in the configuration
-   (landcover characterized_pixel date rank config)))
+       (product-exception-handler e "landcover" segments))))
+  ([characterized_pixel date] ; enable passing in the configuration
+   (landcover characterized_pixel date config)))
 
 (defn change
   "Return the change in landcover from the provided year, to the previous year"
@@ -203,72 +226,84 @@
     current_landcover
     (util/concat_ints previous_landcover current_landcover)))
 
+
 (defn confidence
   "Return the landcover confidence value given the segments, probabilities, query_day and rank for a location"
-  ([characterized_segments query_date rank conf]
+  ([segments query_date conf]
    (try
-     (let [segments            (filter (fn [i] (not (empty? (:probabilities i)))) characterized_segments)
-           [px py]             (:pixelxy segments)
+     (let [[px py]             (:pixelxy segments)
            first_start_day     (:sday (first segments))
            last_end_day        (:eday (last segments))
            intersected_segment (first (filter :intersects segments))
            eday_bday_model     (first (filter :btw_eday_bday segments))
            between_eday_sday   (reduce falls-between-eday-sday segments)
            between_bday_sday   (reduce falls-between-bday-sday segments)
-           class_key           (if (= 0 rank) :primary_class :secondary_class)]
+           key_response        #(hash-map :primary % :secondary %)
+           ;class_key           (if (= 0 rank) :primary_class :secondary_class)
+           ]
 
        (cond
         ; first segment wasn't classifiable, and query date falls between segments
         (and (= 2 (count between_eday_sday)) (empty? (:probabilities (first between_eday_sday))))
-        (:lcc_back (:lc_defaults conf))
+        (key_response (:lcc_back (:lc_defaults conf)))     ;(:lcc_back (:lc_defaults conf))
 
         ; last segment wasn't classifiable, and query date falls between segments
         (and (= 2 (count between_eday_sday)) (empty? (:probabilities (last between_eday_sday))))
-        (:lcc_afterbr (:lc_defaults conf))
+        (key_response (:lcc_afterbr (:lc_defaults conf)))  ;(:lcc_afterbr (:lc_defaults conf))
 
         ; query date precedes first segment start date
         (< query_date first_start_day)
-        (:lcc_back (:lc_defaults conf)) ; return lcc_back value from lc_defaults config
+        (key_response (:lcc_back (:lc_defaults conf)))  ;(:lcc_back (:lc_defaults conf)) ; return lcc_back value from lc_defaults config
 
         ; query date follows last segment end date and change prob == 1
         (and (> query_date last_end_day) (= 1 (int (:chprob (last segments)))))
-        (:lcc_afterbr (:lc_defaults conf)) ; return the lcc_afterbr value from the lc_defaults config
+        (key_response (:lcc_afterbr (:lc_defaults conf)))  ;(:lcc_afterbr (:lc_defaults conf)) ; return the lcc_afterbr value from the lc_defaults config
 
         ; query date follows last segment end date and last segment has no predictions
         (and (> query_date last_end_day) (empty? (:probabilities (last segments))))
-        (:lcc_afterbr (:lc_defaults conf)) ; return the lcc_afterbr value from the lc_defaults config
+        (key_response (:lcc_afterbr (:lc_defaults conf)))  ;(:lcc_afterbr (:lc_defaults conf)) ; return the lcc_afterbr value from the lc_defaults config
 
         ; query date follows last segment end date
         (> query_date last_end_day)
-        (:lcc_forwards (:lc_defaults conf)) ; return the lcc_forwards value from the lc_defaults config
+        (key_response (:lcc_forwards (:lc_defaults conf)))  ;(:lcc_forwards (:lc_defaults conf)) ; return the lcc_forwards value from the lc_defaults config
 
         ; query date falls between a segments start date and end date and growth is true
         (and (not (nil? intersected_segment)) (:growth intersected_segment))
-        (:lcc_growth (:lc_defaults conf)) ; return lcc_growth value from lc_defaults config
+        (key_response (:lcc_growth (:lc_defaults conf)))  ;(:lcc_growth (:lc_defaults conf)) ; return lcc_growth value from lc_defaults config
 
         ; query date falls between a segments start date and end date and decline is true
         (and (not (nil? intersected_segment)) (:decline intersected_segment))
-        (:lcc_decline (:lc_defaults conf)) ; return lcc_decline value from lc_defaults config
+        (key_response (:lcc_decline (:lc_defaults conf)))  ;(:lcc_decline (:lc_defaults conf)) ; return lcc_decline value from lc_defaults config
 
         ; query date falls between a segments start date and end date
         (and (not (nil? intersected_segment)) (not (empty? (:probabilities intersected_segment))))
-        (-> (:probabilities intersected_segment) mean-probabilities sort reverse (nth rank) util/scale-value)
+        (hash-map :primary (scaled-probabilities (:probabilities intersected_segment) 0) 
+                  :secondary (scaled-probabilities (:probabilities intersected_segment) 1))
+        ;(-> (:probabilities intersected_segment) mean-probabilities sort reverse (nth rank) util/scale-value)
 
-        ; query date falls between segments of same landcover classification
-        (= (class_key (first between_eday_sday)) (class_key (last between_eday_sday)))
-        (:lcc_samelc (:lc_defaults conf)) ; return lcc_samelc from lc_defaults config
-
-        ; query date falls between segments with different landcover classifications
         (= 2 (count between_eday_sday))
-        (:lcc_difflc (:lc_defaults conf)) ; return lcc_difflc from lc_defaults config
+        (hash-map :primary (if (same-class between_eday_sday :primary_class) 
+                             (:lcc_samelc (:lc_defaults conf))   ; query date falls between segments of same landcover classification
+                             (:lcc_difflc (:lc_defaults conf)))  ; query date falls between segments with different landcover classifications
+                  :secondary (if (same-class between_eday_sday :secondary_class) 
+                             (:lcc_samelc (:lc_defaults conf))   ; query date falls between segments of same landcover classification
+                             (:lcc_difflc (:lc_defaults conf)))) ; query date falls between segments with different landcover classifications
+
+        ;; ; query date falls between segments of same landcover classification
+        ;; (= (class_key (first between_eday_sday)) (class_key (last between_eday_sday)))
+        ;; (:lcc_samelc (:lc_defaults conf)) ; return lcc_samelc from lc_defaults config
+
+        ;; ; query date falls between segments with different landcover classifications
+        ;; (= 2 (count between_eday_sday))
+        ;; (:lcc_difflc (:lc_defaults conf)) ; return lcc_difflc from lc_defaults config
 
         :else ; we need to throw and exception
         (throw (ex-info (format "Confidence value calculation problem, pixel %s" (:pixelxy segments)) 
                          {:type "data-generation-error"}))))
      (catch Exception e
-       (product-exception-handler e "confidence" characterized_segments))))
-  ([characterized_pixel date rank]
-   (confidence characterized_pixel date rank config)))
+       (product-exception-handler e "confidence" segments))))
+  ([characterized_pixel date]
+   (confidence characterized_pixel date config)))
 
 (defn characterize-inputs
   "Return a hash-map characterizing details of the segment"
@@ -280,28 +315,42 @@
         kw_query_day      (keyword (str query_day))
         kw_previous_day   (keyword (str previous_day))]
     (if (and segments_valid predictions_valid)
+      (hash-map :pixelxy pixelxy
+                :current {kw_query_day (map (characterize_fn query_day) (:segments inputs))}
+                :previous {kw_previous_day (map (characterize_fn previous_day) (:segments inputs))})
       (hash-map :pixelxy pixelxy 
-                kw_query_day    (map (characterize_fn query_day)    (:segments inputs)) 
-                kw_previous_day (map (characterize_fn previous_day) (:segments inputs)))
-      (hash-map :pixelxy pixelxy kw_query_day [] kw_previous_day []))))
+                :current {kw_query_day []} 
+                :previous {kw_previous_day []}))))
 
 (defn products 
-  [characterized_pixel date]
-  (let [previous_date (util/subtract_year date)
-        kw_date       (keyword (str date))
-        kw_previous   (keyword (str previous_date))
-        current_character  (kw_date characterized_pixel)
-        previous_character (kw_previous characterized_pixel)
+  [characterized_pixel]
+  (let [kw_date            (first (keys (:current characterized_pixel)))
+        kw_previous        (first (keys (:previous characterized_pixel)))
+        date               (read-string (name kw_date)) 
+        previous_date      (read-string (name kw_previous)) 
+        current_character  (get-in characterized_pixel [:current kw_date])
+        previous_character (get-in characterized_pixel [:previous kw_previous]) 
         [px py] (:pixelxy characterized_pixel)
         none    (:none (:lc_map config))
         nomodel (:lcc_nomodel (:lc_defaults config))
-        good_data            (not (empty? current_character))
-        primary_landcover    (if good_data (landcover  current_character date 0) none)
-        secondary_landcover  (if good_data (landcover  current_character date 1) none)
-        primary_confidence   (if good_data (confidence current_character date 0) nomodel) 
-        secondary_confidence (if good_data (confidence current_character date 1) nomodel)
-        previous_landcover   (if (not (empty? previous_character)) (landcover previous_character previous_date 0) none)
-        annual_change        (if good_data (change primary_landcover previous_landcover) none)]
+        good_data (not (empty? current_character))
+        segments (filter (fn [i] (not (empty? (:probabilities i)))) current_character)
+        previous_segments (filter (fn [i] (not (empty? (:probabilities i)))) previous_character)
+
+        ;primary_landcover    (if good_data (landcover  segments date 0) none)
+        ;secondary_landcover  (if good_data (landcover  segments date 1) none)
+        lc (landcover segments date)
+        primary_landcover   (if good_data (:primary   lc) none)
+        secondary_landcover (if good_data (:secondary lc) none)
+
+        ;primary_confidence   (if good_data (confidence segments date 0) nomodel) 
+        ;secondary_confidence (if good_data (confidence segments date 1) nomodel)
+        lc_conf (confidence segments date)
+        primary_confidence   (if good_data (:primary   lc_conf) none)
+        secondary_confidence (if good_data (:secondary lc_conf) none)
+
+        previous_landcover   (if (not (empty? previous_character)) (landcover previous_segments previous_date) none)
+        annual_change        (if good_data (change primary_landcover (:primary previous_landcover)) none)]
 
     (hash-map :px px :py py :date date
               :values {:primary-landcover primary_landcover 
@@ -310,27 +359,49 @@
                        :secondary-confidence secondary_confidence
                        :annual-change annual_change})))
 
+(defn start-consumers
+  [in-chan out-chan operation]
+  (let [chunk_size  (:product_instance_count config)]
+    (dotimes [_ chunk_size]
+      (async/thread
+        (while true
+          (let [input (async/<!! in-chan)
+                result (operation input)]
+            (async/>!! out-chan result)))))))
+
 (defn generate
   [{dates :dates cx :cx cy :cy tile :tile :as all}]
   (try
-    (let [segments             (util/with-retry (storage/segments-sorted cx cy "sday")) 
-          predictions          (util/with-retry (storage/predictions cx cy)) 
-          grouped_segments     (util/pixel-groups segments)
-          grouped_predictions  (util/pixel-groups predictions)
-          pixel_coords         (keys grouped_segments)
+    (let [grouped_segments     (storage/grouped-segments cx cy)
+          grouped_predictions  (storage/grouped-predictions cx cy)
+          in-chan              (async/chan)
+          out-chan             (async/chan)
+          ; pixel coordinates
+          pixels               (keys grouped_segments) 
           pixel_hash-map       #(hash-map % {:segments (get grouped_segments %) :predictions (get grouped_predictions %)})
-          pixel_inputs         (into {} (map pixel_hash-map pixel_coords))]
+          ; segments and preds grouped by px py
+          pixel_inputs         (into {} (map pixel_hash-map pixels)) 
+          ordinal_dates        (doall (map util/to-ordinal dates))
+          ; collection of all date and pixel coordinate combinations 
+          dates_pixels         (combo/cartesian-product ordinal_dates pixels)
+          ; characterize the segments, then calculate product values
+          operation            (comp products #(characterize-inputs (last %) (get pixel_inputs (last %)) (first %)))
+          ; items put on in-chan, will be operated on by the operation fn, results put onto the out-chan
+          consumers            (start-consumers in-chan out-chan operation)
+          output_fn            (fn [i] (let [result (async/<!! out-chan)] result))]
 
-      (doseq [date dates]
-        (let [ordinal_date     (util/to-ordinal date)
-              pixel_dates      (combo/cartesian-product [ordinal_date] (keys pixel_inputs)) ; ([ordinal-date [px py]], ...)]
-              prod_fn          (comp #(products % ordinal_date) #(characterize-inputs (last %) (get pixel_inputs (last %)) (first %)))
-              pixel_products   (pmap prod_fn pixel_dates)
-              path             (storage/ppath "cover" cx cy tile date)
-              time_message     (format "Cover product calculation for tile:%s cx:%s cy:%s date:%s " tile cx cy date)
-              flattened_values (util/log-time (util/flatten-values pixel_products) time_message)]
-          (log/infof "storing : %s" (:name path))
-          (util/with-retry (storage/put_json path flattened_values))))
+      (async/go
+        (doseq [dp dates_pixels] ; dp looks like (726283 [1784625 2414775])
+          (async/>!! in-chan dp)))
+
+      (let [results (doall (map output_fn dates_pixels))
+            date_groups (group-by :date results)]
+        (doseq [dg date_groups
+                :let [date (util/to-yyyy-mm-dd (first dg))
+                      path (storage/ppath "cover" cx cy tile date)
+                      values (util/flatten-values (second dg))]]
+          ;(util/with-retry (storage/put_json path values))
+          ))
 
       {:products "cover" :cx cx :cy cy :dates dates})
     (catch Exception e

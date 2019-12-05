@@ -1,6 +1,7 @@
 (ns lcmap.gaia.change-products
   (:gen-class)
-  (:require [clojure.math.numeric-tower :as math]
+  (:require [clojure.core.async    :as async]
+            [clojure.math.numeric-tower :as math]
             [clojure.math.combinatorics :as combo]
             [clojure.string        :as string]
             [clojure.tools.logging :as log]
@@ -10,7 +11,8 @@
             [lcmap.gaia.gdal       :as gdal]
             [lcmap.gaia.product-specs :as product-specs]
             [lcmap.gaia.storage    :as storage]
-            [lcmap.gaia.util       :as util]))
+            [lcmap.gaia.util       :as util]
+            [cheshire.core         :as json]))
 
 (defn product-exception-handler
   [exception product_name]
@@ -129,21 +131,39 @@
                        :time-since-change (time-since-change pxpy segments date)
                        :time-of-change (time-of-change pxpy segments date)})))
 
+(defn start-consumers
+  [in-chan out-chan operation]
+  (let [chunk_size  (:product_instance_count config)]
+    (dotimes [_ chunk_size]
+      (async/thread
+        (while true
+          (let [input (async/<!! in-chan)
+                result (operation input)]
+            (async/>!! out-chan result)))))))
+
 (defn generate
   [{dates :dates cx :cx cy :cy tile :tile :as all}]
   (try
-    (let [segments         (util/with-retry (storage/segments-sorted cx cy "sday")) 
-          grouped_segments (util/pixel-groups segments)]
+    (let [grouped_segments (storage/grouped-segments cx cy)
+          in-chan          (async/chan)
+          out-chan         (async/chan)
+          operation        #(products (last %) (get grouped_segments (last %)) (first %))
+          consumers        (start-consumers in-chan out-chan operation)
+          ordinal_dates    (doall (map util/to-ordinal dates))
+          pixels           (keys grouped_segments)
+          output_fn        (fn [i] (let [result (async/<!! out-chan)] result))
+          dates_pixels     (combo/cartesian-product ordinal_dates pixels)]
 
-      (doseq [date dates]
-        (let [ordinal_date   (util/to-ordinal date)
-              path           (storage/ppath "change" cx cy tile date)
-              pixel_dates    (combo/cartesian-product [ordinal_date] (keys grouped_segments))
-              pixel_products (pmap #(products (last %) (get grouped_segments (last %)) (first %)) pixel_dates)
-              time_message   (format "Change product calculation for tile:%s cx:%s cy:%s date:%s" tile cx cy date)
-              values         (util/log-time (util/flatten-values pixel_products) time_message)]
+      (async/go
+        (doseq [dp dates_pixels]
+          (async/>!! in-chan dp)))
 
-          (log/infof "storing : %s" (:name path))
+      (let [results (doall (map output_fn dates_pixels))
+            date_groups (group-by :date results)] ; group results by (:date )
+        (doseq [dg date_groups
+                :let [date (util/to-yyyy-mm-dd (first dg))
+                      path (storage/ppath "change" cx cy tile date)
+                      values (util/flatten-values (second dg))]]
           (util/with-retry (storage/put_json path values))))
 
       {:products "change" :cx cx :cy cy :dates dates})
