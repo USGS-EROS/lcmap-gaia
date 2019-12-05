@@ -90,7 +90,7 @@
         elements ["LCMAP" grid tileid repr_year production_date ccd_ver product_abbr]
         name (str (string/join "-" elements) ".tif")
         prefix (storage/get-prefix grid date tileid "raster" product)
-        url (storage/get_url storage/bucketname (str prefix "/" name))
+        url (storage/get_url storage/dest_bucket (str prefix "/" name))
         type (:type (last product_info))]
     {:name name :prefix prefix :url url :data-type type :data-product data_product}))
 

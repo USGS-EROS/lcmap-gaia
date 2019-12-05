@@ -10,6 +10,9 @@
             [lcmap.gaia.file       :as file]
             [lcmap.gaia.config     :refer [config]]))
 
+(set! *warn-on-reflection* true)
+(set! *unchecked-math* :warn-on-boxed)
+
 (def gregorian_day_one (jt/local-date 0001 1))
 (def date_pattern (re-pattern #"[0-9]{4}-[0-9]{2}-[0-9]{2}"))
 (def date_time_pattern (re-pattern #"[0-9]{4}-[0-9]{2}-[0-9]{2}T[0-9]{2}:[0-9]{2}:[0-9]{2}\.[0-9]{6}"))
@@ -45,7 +48,7 @@
 (defn ordinal-to-javatime
   "Convert an ordinal day on the Gregorian Calendar
   to java-time"
-  [ordinal]
+  [^long ordinal]
   (let [days_from_zero (- ordinal 1)]
     (jt/plus gregorian_day_one (jt/days days_from_zero))))
 
@@ -62,7 +65,7 @@
 
 (defn to-yyyy-mm-dd
   "Convert ordinal value to a YYYY-MM-DD formatted string"
-  [ordinaldate]
+  [^long ordinaldate]
   (-> ordinaldate inc ordinal-to-javatime str))
 
 (defn todays-date
@@ -115,7 +118,7 @@
 
 (defn scale-value
   "Return scaling of probability into integer, with a min value of 1"
-  ([value factor]
+  ([^double value ^long factor]
     (let [_prob (* value factor)]
       (if (< _prob 1)
         1
@@ -126,10 +129,10 @@
 (defn mean 
   "Returns the mathematical mean value for a collection of numbers"
   [coll]
-  (let [sum (apply + coll)
-        count (count coll)]
-    (if (pos? count)
-      (float (/ sum count)) 
+  (let [sum (float (apply + coll)) 
+        cnt (int (count coll))]
+    (if (pos? cnt)
+      (float (/ sum cnt)) 
       0)))
 
 ;; add-usr-path and amend-usr-path blatantly ripped off from the

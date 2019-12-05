@@ -6,9 +6,11 @@
 
 (deftest segment_check_test
   (let [good_segment (keywordize-keys (first tr/segments_json))
-        bad_segment (conj good_segment {:px "not a coordinate"})]
+        bad_segment (conj good_segment {:px "not a coordinate"})
+        default_segment (conj good_segment {:sday "0001-01-01" :eday "0001-01-01" :bday "0001-01-01"})]
     (is (= good_segment (product-specs/segment_check good_segment)))
-    (is (thrown-with-msg? Exception #"Validation Error" (product-specs/segment_check bad_segment)))))
+    (is (thrown-with-msg? Exception #"Validation Error" (product-specs/segment_check bad_segment)))
+    (is (thrown-with-msg? Exception #"Validation Error" (product-specs/segment_check default_segment)))))
 
 (deftest segment_coll_test
   (let [segments (keywordize-keys tr/segments_json)

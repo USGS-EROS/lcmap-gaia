@@ -15,9 +15,9 @@
 ;(spec/def ::coord (spec/and integer? ::coord_bounds))
 (spec/def ::coord integer?)
 
-
+(spec/def ::not_default #(not (re-matches #"0001-01-01" %)))
 (spec/def ::day_fmt #(some? (re-matches #"[0-9]{4}-[0-9]{2}-[0-9]{2}" %)))
-(spec/def ::days (spec/and string? ::day_fmt))
+(spec/def ::days (spec/and string? ::day_fmt ::not_default))
 
 ; segments predicates
 (spec/def ::px ::coord)
